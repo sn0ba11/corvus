@@ -397,7 +397,7 @@ def ensure_env(*, enable_browser: bool = True) -> None:
     _ = enable_browser
     content = set_env_value(content, "OSINT_BROWSER_ENABLED", "true")
     content = set_env_value(content, "OSINT_BUILD_COMMIT", source_commit())
-    content = set_env_value(content, "OSINT_VERSION", "0.2.0-rc13")
+    content = set_env_value(content, "OSINT_VERSION", "0.2.0-rc14")
     values = {
         line.partition("=")[0]: line.partition("=")[2]
         for line in content.splitlines()
@@ -599,7 +599,7 @@ def install(*, enable_browser: bool = True) -> None:
         json.dumps(
             {
                 "installed_at": time.time(),
-                "version": "0.2.0-rc13",
+                "version": "0.2.0-rc14",
                 "build_commit": source_commit(),
                 "images": snapshot_images(),
             },
@@ -634,7 +634,7 @@ def update(*, enable_browser: bool = True) -> None:
         raise
     write_state({
         "updated_at": time.time(),
-        "version": "0.2.0-rc13",
+        "version": "0.2.0-rc14",
         "build_commit": source_commit(),
         "previous_images": previous,
         "images": snapshot_images(),

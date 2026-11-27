@@ -59,6 +59,47 @@ function Invoke-External {
     if ($output) { $output | ForEach-Object { Write-Host $_ } }
 }
 
+function Update-AppCheckoutFromBundle {
+    param(
+        [Parameter(Mandatory = $true)][string]$GitExecutable,
+        [Parameter(Mandatory = $true)][string]$AppRoot,
+        [Parameter(Mandatory = $true)][string]$BundlePath
+    )
+    # refs/remotes/installer/main belongs to the installer, so it may be
+    # replaced outright ("+"); a previous release need not be its ancestor.
+    Invoke-External $GitExecutable @(
+        "-C", $AppRoot, "fetch", $BundlePath,
+        "+refs/heads/main:refs/remotes/installer/main"
+    )
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        & $GitExecutable -C $AppRoot merge-base --is-ancestor refs/remotes/installer/main HEAD 2>$null
+        $bundleIsAncestor = $LASTEXITCODE -eq 0
+        & $GitExecutable -C $AppRoot merge-base --is-ancestor HEAD refs/remotes/installer/main 2>$null
+        $headIsAncestor = $LASTEXITCODE -eq 0
+    } finally {
+        $ErrorActionPreference = $previousPreference
+    }
+    if ($bundleIsAncestor) { return }
+    if ($headIsAncestor) {
+        Invoke-External $GitExecutable @("-C", $AppRoot, "merge", "--ff-only", "refs/remotes/installer/main")
+        return
+    }
+    # The checkout comes from a different history, such as a build made before
+    # the public release. Keep that history under a backup branch, then move
+    # main to the release. Ignored files (.env, local data) are not touched.
+    $previousHead = Invoke-External $GitExecutable @("-C", $AppRoot, "rev-parse", "HEAD") -Capture
+    $backupBranch = "corvus-pre-migration-" + (Get-Date -Format "yyyyMMdd-HHmmss")
+    Invoke-External $GitExecutable @("-C", $AppRoot, "branch", "--force", $backupBranch, $previousHead)
+    Invoke-External $GitExecutable @("-C", $AppRoot, "checkout", "--force", "-B", "main", "refs/remotes/installer/main")
+    Invoke-External $GitExecutable @("-C", $AppRoot, "reset", "--hard", "refs/remotes/installer/main")
+    # The updater fetches main into origin/main without force, so a tracking
+    # ref left on the earlier history would block every later update.
+    Invoke-External $GitExecutable @("-C", $AppRoot, "update-ref", "refs/remotes/origin/main", "refs/remotes/installer/main")
+    Write-Host "The existing checkout used a different source history. It moved to the Corvus release; the previous version ($previousHead) is kept in Git branch $backupBranch."
+}
+
 function Assert-Command([string]$Name, [string]$InstallMessage) {
     if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
         throw "$Name is required. $InstallMessage"
@@ -569,21 +610,7 @@ try {
             Write-Host "Existing application modifications were safely backed up in Git stash $savedStash. Local configuration and Docker volumes are unchanged."
         }
         try {
-            Invoke-External $gitExecutable @(
-                "-C", $appRoot, "fetch", $BundlePath,
-                "refs/heads/main:refs/remotes/installer/main"
-            )
-            $previousPreference = $ErrorActionPreference
-            $ErrorActionPreference = "Continue"
-            try {
-                & $gitExecutable -C $appRoot merge-base --is-ancestor refs/remotes/installer/main HEAD
-                $bundleIsAncestor = $LASTEXITCODE -eq 0
-            } finally {
-                $ErrorActionPreference = $previousPreference
-            }
-            if (-not $bundleIsAncestor) {
-                Invoke-External $gitExecutable @("-C", $appRoot, "merge", "--ff-only", "refs/remotes/installer/main")
-            }
+            Update-AppCheckoutFromBundle -GitExecutable $gitExecutable -AppRoot $appRoot -BundlePath $BundlePath
         } catch {
             # If updating the source failed before moving HEAD, restore the
             # user's working tree. Keep the stash if applying it fails.

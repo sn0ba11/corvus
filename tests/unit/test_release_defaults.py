@@ -25,9 +25,9 @@ def test_fresh_install_generates_independent_local_secrets(
     (tmp_path / ".env.example").write_bytes((ROOT / ".env.example").read_bytes())
     installer.ensure_env()
     fresh = installer.env_values()
-    assert fresh["OSINT_VERSION"] == "0.2.0-rc13"
+    assert fresh["OSINT_VERSION"] == "0.2.0-rc14"
     settings = Settings(_env_file=tmp_path / ".env")
-    assert settings.version == "0.2.0-rc13"
+    assert settings.version == "0.2.0-rc14"
 
     assert fresh["OSINT_SECRET_KEY"] != fresh["OSINT_BROWSER_AGENT_TOKEN"]
     installer.ensure_env()

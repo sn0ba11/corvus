@@ -1,4 +1,7 @@
 import json
+import os
+import shutil
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -699,7 +702,7 @@ def test_standard_windows_installer_embeds_updateable_checkout_and_supports_full
     assert "PRODUCT_FILE_VERSION=$fileVersion" in builder
     assert "Get-FileHash -LiteralPath $installerPath -Algorithm SHA256" in builder
     assert "RELEASE_NOTES.md" in builder
-    assert '[string]$Version = "0.2.0-rc13"' in builder
+    assert '[string]$Version = "0.2.0-rc14"' in builder
     assert "function Install-AndResolveGitForWindows" in bootstrap
     assert '"install", "--id", "Git.Git"' in bootstrap
     assert '"--scope", "user"' in bootstrap
@@ -1036,3 +1039,96 @@ def test_windows_installer_branding_assets_match_approved_artwork(tmp_path: Path
     spec.loader.exec_module(module)
     module.write_icon(tmp_path / "Corvus.ico")
     assert (tmp_path / "Corvus.ico").read_bytes() == (branding / "Corvus.ico").read_bytes()
+
+
+def _bootstrap_function(source: str, name: str) -> str:
+    start = source.index(f"function {name} {{")
+    depth = 0
+    for index in range(source.index("{", start), len(source)):
+        depth += {"{": 1, "}": -1}.get(source[index], 0)
+        if depth == 0:
+            return source[start : index + 1]
+    raise AssertionError(f"unterminated function {name}")
+
+
+@pytest.mark.skipif(shutil.which("pwsh") is None or shutil.which("git") is None, reason="needs pwsh and git")
+def test_bootstrap_upgrade_migrates_checkouts_from_a_different_history(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[2]
+    bootstrap = (root / "installer" / "windows" / "Bootstrap-OSINTWorkbench.ps1").read_text(encoding="utf-8")
+
+    def git(*args: str, cwd: Path) -> str:
+        env = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull,
+               "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
+               "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid"}
+        return subprocess.run(["git", *args], cwd=cwd, env=env, check=True, capture_output=True, text=True).stdout.strip()  # noqa: S603, S607
+
+    def commit(repo: Path, name: str, text: str) -> str:
+        (repo / name).write_text(text, encoding="utf-8")
+        git("add", "-A", cwd=repo)
+        git("commit", "-q", "-m", text, cwd=repo)
+        return git("rev-parse", "HEAD", cwd=repo)
+
+    release = tmp_path / "release"
+    release.mkdir()
+    git("init", "-q", "-b", "main", cwd=release)
+    commit(release, "app.txt", "public 1")
+    old_bundle = tmp_path / "old.bundle"
+    git("bundle", "create", str(old_bundle), "main", cwd=release)
+    public_head = commit(release, "app.txt", "public 2")
+    bundle = tmp_path / "release.bundle"
+    git("bundle", "create", str(bundle), "main", cwd=release)
+
+    # A pre-public install: unrelated history, a stale installer ref and an ignored .env.
+    app = tmp_path / "app"
+    app.mkdir()
+    git("init", "-q", "-b", "main", cwd=app)
+    (app / ".gitignore").write_text(".env\n", encoding="utf-8")
+    private_head = commit(app, "app.txt", "private")
+    git("update-ref", "refs/remotes/installer/main", private_head, cwd=app)
+    git("update-ref", "refs/remotes/origin/main", private_head, cwd=app)
+    (app / ".env").write_text("OSINT_PORT=8123\n", encoding="utf-8")
+
+    script = tmp_path / "run.ps1"
+    script.write_text(
+        "$ErrorActionPreference = 'Stop'\n"
+        + _bootstrap_function(bootstrap, "Invoke-External") + "\n"
+        + _bootstrap_function(bootstrap, "Update-AppCheckoutFromBundle") + "\n"
+        + "Update-AppCheckoutFromBundle -GitExecutable git -AppRoot $args[0] -BundlePath $args[1]\n",
+        encoding="utf-8",
+    )
+    env = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull}
+
+    def upgrade(bundle_path: Path) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(  # noqa: S603
+            ["pwsh", "-NoProfile", "-File", str(script), str(app), str(bundle_path)],  # noqa: S607
+            env=env, capture_output=True, text=True,
+        )
+
+    result = upgrade(bundle)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert git("rev-parse", "HEAD", cwd=app) == public_head
+    assert git("symbolic-ref", "--short", "HEAD", cwd=app) == "main"
+    assert (app / "app.txt").read_text(encoding="utf-8") == "public 2"
+    assert (app / ".env").read_text(encoding="utf-8") == "OSINT_PORT=8123\n"
+    backups = git("for-each-ref", "--format=%(refname:short) %(objectname)", "refs/heads/corvus-pre-migration-*", cwd=app)
+    assert backups.endswith(private_head)
+    assert "kept in Git branch corvus-pre-migration-" in result.stdout
+    # The updater fetches without force into origin/main; that ref must follow the release.
+    assert git("rev-parse", "refs/remotes/origin/main", cwd=app) == public_head
+
+    # Re-running the same release, or an older one, leaves the checkout alone.
+    for older in (bundle, old_bundle):
+        result = upgrade(older)
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert git("rev-parse", "HEAD", cwd=app) == public_head
+
+    # A newer release fast-forwards.
+    newer_head = commit(release, "app.txt", "public 3")
+    newer = tmp_path / "newer.bundle"
+    git("bundle", "create", str(newer), "main", cwd=release)
+    result = upgrade(newer)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert git("rev-parse", "HEAD", cwd=app) == newer_head
+    assert "different source history" not in result.stdout
+    git("fetch", str(newer), "refs/heads/main:refs/remotes/origin/main", cwd=app)
+    assert git("rev-parse", "refs/remotes/origin/main", cwd=app) == newer_head

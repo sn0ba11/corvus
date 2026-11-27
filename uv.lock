@@ -907,7 +907,7 @@ wheels = [
 
 [[package]]
 name = "osint-workbench"
-version = "0.2.0rc13"
+version = "0.2.0rc14"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
