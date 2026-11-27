@@ -3,6 +3,10 @@
 <img src="app/static/corvus-mark.jpg" alt="Corvus" width="72">
 Corvus is a local workbench for open-source investigations. Create a case, choose collectors, review their findings and provenance, and export evidence for further analysis. Local workflows include evidence imports, case graphs, timelines and report generation. Online collectors and the managed browser perform selected lookups against external services.
 
+**[Download for Windows](https://github.com/sn0ba11/corvus/releases)** · [Installation guide](docs/DEPLOYMENT.md)
+
+Choose the newest Windows setup executable from the release assets and verify its SHA-256 checksum before running it. Public pre-releases are available from the same page.
+
 ## Quick start
 
 The core runs on Python 3.12 or later. The full stack uses Docker Engine with Compose v2 on Linux or Docker Desktop on Windows and macOS. Platform packages use the existing Windows and macOS launchers. See [installation](docs/DEPLOYMENT.md) for prerequisites, platform details and a Docker-free core run.
