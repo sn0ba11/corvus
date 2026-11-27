@@ -19,5 +19,6 @@ This is the public operator documentation. The [complete manual](MANUAL.md) rema
 | [Architecture](ARCHITECTURE.md) | Implementation and evidence model |
 | [External integrations](UPSTREAMS.md) | Pinned upstreams, licences and packaging |
 | [Adapter development](ADAPTER_DEVELOPMENT.md) | Extending the application |
+| [Developer guide](DEVELOPERS.md) | Local setup, collector registration, testing and frontend development |
 
 For a complete walkthrough, see [first investigation](MANUAL.md#4-first-investigation-walkthrough-username-to-report). To report a security issue, follow [SECURITY.md](../SECURITY.md).

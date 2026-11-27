@@ -45,6 +45,10 @@ Windows uses Docker Desktop with WSL 2 for the full stack. Linux runtime and sil
 
 Start with the [documentation index](docs/INDEX.md), or open the [complete operator manual](docs/MANUAL.md). See [settings](docs/SETTINGS.md), [troubleshooting and backups](docs/OPERATIONS.md), [architecture](docs/ARCHITECTURE.md) and [external integrations](docs/UPSTREAMS.md).
 
+## Developers
+
+See the [Developer Hub](https://github.com/sn0ba11/corvus/wiki/Developer-Hub), [developer guide](docs/DEVELOPERS.md) and [collector starter kit](examples/collector-template/README.md) for adding collectors and contributing changes.
+
 ## Privacy and limitations
 
 Case databases, exports and retained captures are stored locally. Selected online collectors and browser actions send queries or URLs to their respective services. Browser profiles can retain authentication cookies. The application does not include telemetry. Source availability, login walls and rate limits affect coverage; a missing result does not necessarily mean an account or record does not exist. Correlation candidates require analyst review.
