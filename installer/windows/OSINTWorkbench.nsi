@@ -6,7 +6,7 @@ Unicode True
 !include "nsDialogs.nsh"
 
 !ifndef PRODUCT_VERSION
-  !define PRODUCT_VERSION "0.2.0-rc12"
+  !define PRODUCT_VERSION "0.2.0-rc13"
 !endif
 !ifndef SOURCE_REPOSITORY
   !define SOURCE_REPOSITORY "https://github.com/sn0ba11/corvus.git"

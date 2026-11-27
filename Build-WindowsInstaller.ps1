@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "0.2.0-rc12",
+    [string]$Version = "0.2.0-rc13",
     [string]$RepositoryUrl = "https://github.com/sn0ba11/corvus.git",
     [string]$OutputDirectory,
     [string]$MakensisPath,

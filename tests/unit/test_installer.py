@@ -699,7 +699,7 @@ def test_standard_windows_installer_embeds_updateable_checkout_and_supports_full
     assert "PRODUCT_FILE_VERSION=$fileVersion" in builder
     assert "Get-FileHash -LiteralPath $installerPath -Algorithm SHA256" in builder
     assert "RELEASE_NOTES.md" in builder
-    assert '[string]$Version = "0.2.0-rc12"' in builder
+    assert '[string]$Version = "0.2.0-rc13"' in builder
     assert "function Install-AndResolveGitForWindows" in bootstrap
     assert '"install", "--id", "Git.Git"' in bootstrap
     assert '"--scope", "user"' in bootstrap

@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./data/osint.db"
     data_dir: Path = Path("data")
     secret_key: str = ""
-    version: str = "0.2.0-rc12"
+    version: str = "0.2.0-rc13"
     build_commit: str = ""
     max_concurrent_investigations: int = Field(2, ge=1, le=16)
     max_concurrent_collectors: int = Field(3, ge=1, le=12)
