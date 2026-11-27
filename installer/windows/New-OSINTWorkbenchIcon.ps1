@@ -48,7 +48,7 @@ function New-BrandedPng {
 }
 
 try {
-    $sizes = @(16, 32, 48, 256)
+    $sizes = @(16, 20, 24, 32, 40, 48, 64, 128, 256)
     $images = @($sizes | ForEach-Object { New-BrandedPng -Size $_ })
     $resolvedOutput = [IO.Path]::GetFullPath($OutputPath)
     New-Item -ItemType Directory -Path (Split-Path -Parent $resolvedOutput) -Force | Out-Null

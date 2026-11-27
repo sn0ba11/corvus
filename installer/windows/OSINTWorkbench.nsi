@@ -23,12 +23,18 @@ Unicode True
 !ifndef OUTPUT_DIR
   !define OUTPUT_DIR "..\..\dist\release"
 !endif
-!ifndef PRODUCT_ICON
-  !define PRODUCT_ICON "${PAYLOAD_DIR}\OSINTWorkbench.ico"
+!ifndef BRANDING_DIR
+  !define BRANDING_DIR "${PROJECT_ROOT}\installer\windows\branding"
 !endif
+!ifndef PRODUCT_ICON
+  !define PRODUCT_ICON "${BRANDING_DIR}\Corvus.ico"
+!endif
+!define PRODUCT_WIZARD_BITMAP "${BRANDING_DIR}\Corvus-wizard.bmp"
+!define PRODUCT_HEADER_BITMAP "${BRANDING_DIR}\Corvus-header.bmp"
 
 !define PRODUCT_NAME "Corvus"
-!define PRODUCT_PUBLISHER "sn0ba11"
+!define PRODUCT_PUBLISHER "Corvus"
+!define PRODUCT_COPYRIGHT "Copyright (c) 2026 sn0ba11"
 !define PRODUCT_WEB_SITE "https://github.com/sn0ba11/corvus"
 !define PRODUCT_UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSINTWorkbench"
 
@@ -46,9 +52,12 @@ VIProductVersion "${PRODUCT_FILE_VERSION}"
 VIAddVersionKey /LANG=1033 "ProductName" "${PRODUCT_NAME}"
 VIAddVersionKey /LANG=1033 "ProductVersion" "${PRODUCT_VERSION}"
 VIAddVersionKey /LANG=1033 "FileVersion" "${PRODUCT_VERSION}"
+VIFileVersion "${PRODUCT_FILE_VERSION}"
 VIAddVersionKey /LANG=1033 "CompanyName" "${PRODUCT_PUBLISHER}"
-VIAddVersionKey /LANG=1033 "FileDescription" "Corvus standard Windows installer"
-VIAddVersionKey /LANG=1033 "LegalCopyright" "Copyright sn0ba11"
+VIAddVersionKey /LANG=1033 "FileDescription" "${PRODUCT_NAME} Setup"
+VIAddVersionKey /LANG=1033 "LegalCopyright" "${PRODUCT_COPYRIGHT}"
+VIAddVersionKey /LANG=1033 "InternalName" "Corvus-Setup"
+VIAddVersionKey /LANG=1033 "OriginalFilename" "Corvus-${PRODUCT_VERSION}-Setup.exe"
 
 Var WorkbenchUrl
 Var BrowserUrl
@@ -60,6 +69,15 @@ Var PurgeData
 !define MUI_CUSTOMFUNCTION_ABORT StopBootstrapOnAbort
 !define MUI_ICON "${PRODUCT_ICON}"
 !define MUI_UNICON "${PRODUCT_ICON}"
+!define MUI_WELCOMEFINISHPAGE_BITMAP "${PRODUCT_WIZARD_BITMAP}"
+!define MUI_UNWELCOMEFINISHPAGE_BITMAP "${PRODUCT_WIZARD_BITMAP}"
+!define MUI_HEADERIMAGE
+!define MUI_HEADERIMAGE_RIGHT
+!define MUI_HEADERIMAGE_BITMAP "${PRODUCT_HEADER_BITMAP}"
+!define MUI_HEADERIMAGE_UNBITMAP "${PRODUCT_HEADER_BITMAP}"
+!define MUI_WELCOMEPAGE_TITLE "Welcome to Corvus ${PRODUCT_VERSION} Setup"
+!define MUI_FINISHPAGE_TITLE "Corvus is ready"
+!define MUI_UNCONFIRMPAGE_TEXT_TOP "Corvus will be removed from your computer."
 !define MUI_FINISHPAGE_RUN
 !define MUI_FINISHPAGE_RUN_TEXT "Open Corvus"
 !define MUI_FINISHPAGE_RUN_FUNCTION LaunchWorkbench
@@ -191,13 +209,14 @@ Section "Install Corvus" SEC_MAIN
   Delete "$SMPROGRAMS\Corvus\Corvus.url"
   CreateShortCut "$SMPROGRAMS\Corvus\Corvus.lnk" "$WINDIR\explorer.exe" "$WorkbenchUrl" "$INSTDIR\installer\OSINTWorkbench.ico" 0 SW_SHOWNORMAL
   Delete "$SMPROGRAMS\Corvus\Check for Updates.lnk"
-  CreateShortCut "$SMPROGRAMS\Corvus\Corvus Update.lnk" "$WINDIR\explorer.exe" "corvus-update://run" "$WINDIR\explorer.exe" 0 SW_SHOWNORMAL
+  CreateShortCut "$SMPROGRAMS\Corvus\Corvus Update.lnk" "$WINDIR\explorer.exe" "corvus-update://run" "$INSTDIR\installer\OSINTWorkbench.ico" 0 SW_SHOWNORMAL
   WriteRegStr HKCU "Software\Classes\corvus-update" "" "URL:Corvus Update"
   WriteRegStr HKCU "Software\Classes\corvus-update" "URL Protocol" ""
   WriteRegStr HKCU "Software\Classes\corvus-update\DefaultIcon" "" "$INSTDIR\installer\OSINTWorkbench.ico"
   WriteRegStr HKCU "Software\Classes\corvus-update\shell\open\command" "" '$\"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe$\" -NoLogo -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File $\"$INSTDIR\installer\Update-CorvusBootstrap.ps1$\" -InstallRoot $\"$INSTDIR$\"'
   WriteRegStr HKCU "Software\Classes\osint-workbench-update" "" "URL:Corvus Update (compatibility)"
   WriteRegStr HKCU "Software\Classes\osint-workbench-update" "URL Protocol" ""
+  WriteRegStr HKCU "Software\Classes\osint-workbench-update\DefaultIcon" "" "$INSTDIR\installer\OSINTWorkbench.ico"
   WriteRegStr HKCU "Software\Classes\osint-workbench-update\shell\open\command" "" '$\"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe$\" -NoLogo -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File $\"$INSTDIR\installer\Update-CorvusBootstrap.ps1$\" -InstallRoot $\"$INSTDIR$\"'
 
   Delete "$DESKTOP\Corvus.url"
@@ -206,13 +225,14 @@ Section "Install Corvus" SEC_MAIN
   CreateShortCut "$DESKTOP\Corvus.lnk" "$WINDIR\explorer.exe" "$WorkbenchUrl" "$INSTDIR\installer\OSINTWorkbench.ico" 0 SW_SHOWNORMAL
 
   WriteUninstaller "$INSTDIR\Uninstall Corvus.exe"
-  CreateShortCut "$SMPROGRAMS\Corvus\Uninstall Corvus.lnk" "$INSTDIR\Uninstall Corvus.exe"
-  CreateShortCut "$SMPROGRAMS\Corvus\Factory Reset Corvus.lnk" "$INSTDIR\Uninstall Corvus.exe" "/PURGE"
+  CreateShortCut "$SMPROGRAMS\Corvus\Uninstall Corvus.lnk" "$INSTDIR\Uninstall Corvus.exe" "" "$INSTDIR\installer\OSINTWorkbench.ico" 0
+  CreateShortCut "$SMPROGRAMS\Corvus\Factory Reset Corvus.lnk" "$INSTDIR\Uninstall Corvus.exe" "/PURGE" "$INSTDIR\installer\OSINTWorkbench.ico" 0
 
   WriteRegStr HKCU "${PRODUCT_UNINSTALL_KEY}" "DisplayName" "${PRODUCT_NAME}"
   WriteRegStr HKCU "${PRODUCT_UNINSTALL_KEY}" "DisplayVersion" "${PRODUCT_VERSION}"
   WriteRegStr HKCU "${PRODUCT_UNINSTALL_KEY}" "Publisher" "${PRODUCT_PUBLISHER}"
   WriteRegStr HKCU "${PRODUCT_UNINSTALL_KEY}" "URLInfoAbout" "${PRODUCT_WEB_SITE}"
+  WriteRegStr HKCU "${PRODUCT_UNINSTALL_KEY}" "HelpLink" "${PRODUCT_WEB_SITE}"
   WriteRegStr HKCU "${PRODUCT_UNINSTALL_KEY}" "InstallLocation" "$INSTDIR"
   WriteRegStr HKCU "${PRODUCT_UNINSTALL_KEY}" "DisplayIcon" "$INSTDIR\installer\OSINTWorkbench.ico"
   WriteRegStr HKCU "${PRODUCT_UNINSTALL_KEY}" "UninstallString" '"$INSTDIR\Uninstall Corvus.exe"'

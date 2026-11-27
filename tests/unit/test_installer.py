@@ -725,18 +725,25 @@ def test_standard_windows_installer_embeds_updateable_checkout_and_supports_full
     assert 'DisplayIcon" "$INSTDIR\\installer\\OSINTWorkbench.ico"' in nsis
     assert 'CreateShortCut "$DESKTOP\\Corvus.lnk"' in nsis
     assert 'CreateShortCut "$SMPROGRAMS\\Corvus\\Corvus.lnk"' in nsis
-    assert "New-OSINTWorkbenchIcon.ps1" in builder
-    assert "new_osint_workbench_icon.py" in builder
-    assert 'if ($env:OS -eq "Windows_NT")' in builder
+    assert 'Join-Path $brandingDirectory "Corvus.ico"' in builder
     assert "PRODUCT_ICON=$iconPath" in builder
+    assert "BRANDING_DIR=$brandingDirectory" in builder
+    assert '!define PRODUCT_PUBLISHER "Corvus"' in nsis
+    assert 'VIAddVersionKey /LANG=1033 "LegalCopyright" "${PRODUCT_COPYRIGHT}"' in nsis
+    assert "MUI_WELCOMEFINISHPAGE_BITMAP" in nsis
+    assert "MUI_UNWELCOMEFINISHPAGE_BITMAP" in nsis
+    assert "MUI_HEADERIMAGE_BITMAP" in nsis
+    assert 'Uninstall Corvus.exe" "" "$INSTDIR\\installer\\OSINTWorkbench.ico"' in nsis
+    assert '"corvus-update://run" "$INSTDIR\\installer\\OSINTWorkbench.ico"' in nsis
     assert 'app\\static\\corvus-mark.jpg' in icon_generator
     assert "ReadAllBytes" in icon_generator
     assert "complete JPEG payload" in icon_generator
     assert "FromBase64String" not in icon_generator
     assert "Generated Corvus icon from approved artwork" in icon_generator
     assert "return ,$stream.ToArray()" in icon_generator
-    assert 'image.save(destination, format="ICO"' in portable_icon_generator
-    assert "sizes=[(16, 16), (32, 32), (48, 48), (256, 256)]" in portable_icon_generator
+    assert '$sizes = @(16, 20, 24, 32, 40, 48, 64, 128, 256)' in icon_generator
+    assert 'save(destination, format="ICO"' in portable_icon_generator
+    assert "corvus-mark.jpg" in portable_icon_generator
 
 
 def test_macos_installer_creates_native_launcher_daily_update_and_full_uninstaller() -> None:
@@ -1008,3 +1015,24 @@ def test_repository_address_cannot_be_a_git_option() -> None:
     assert not installer.repository_url_valid("--upload-pack=x@host:path")
     assert installer.repository_url_valid("git@git.example:owner/corvus.git")
     assert installer.repository_url_valid("https://github.com/sn0ba11/corvus.git")
+
+
+def test_windows_installer_branding_assets_match_approved_artwork(tmp_path: Path) -> None:
+    from PIL import Image
+
+    root = Path(__file__).resolve().parents[2]
+    branding = root / "installer" / "windows" / "branding"
+    with Image.open(branding / "Corvus.ico") as icon:
+        assert {16, 24, 32, 48, 64, 128, 256} <= {size[0] for size in icon.info["sizes"]}
+    for name, size in (("Corvus-wizard.bmp", (164, 314)), ("Corvus-header.bmp", (150, 57))):
+        with Image.open(branding / name) as bitmap:
+            assert bitmap.format == "BMP" and bitmap.mode == "RGB" and bitmap.size == size
+
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("corvus_icon", root / "scripts" / "new_osint_workbench_icon.py")
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.write_icon(tmp_path / "Corvus.ico")
+    assert (tmp_path / "Corvus.ico").read_bytes() == (branding / "Corvus.ico").read_bytes()

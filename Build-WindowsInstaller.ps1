@@ -14,9 +14,8 @@ if (-not $OutputDirectory) {
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 $payloadDirectory = Join-Path ([IO.Path]::GetTempPath()) ("corvus-windows-installer-" + [Guid]::NewGuid().ToString("N"))
 $bundlePath = Join-Path $payloadDirectory "osint-workbench.bundle"
-$iconPath = Join-Path $payloadDirectory "OSINTWorkbench.ico"
-$iconGenerator = Join-Path $root "installer\windows\New-OSINTWorkbenchIcon.ps1"
-$portableIconGenerator = Join-Path $root "scripts\new_osint_workbench_icon.py"
+$brandingDirectory = Join-Path $root "installer\windows\branding"
+$iconPath = Join-Path $brandingDirectory "Corvus.ico"
 $nsiPath = Join-Path $root "installer\windows\OSINTWorkbench.nsi"
 
 function Find-Makensis {
@@ -91,25 +90,12 @@ try {
     } finally {
         Remove-Item -LiteralPath $bundleProbe -Recurse -Force -ErrorAction SilentlyContinue
     }
-    if ($env:OS -eq "Windows_NT") {
-        if (-not (Test-Path -LiteralPath $iconGenerator -PathType Leaf)) {
-            throw "The Corvus icon generator is missing."
+    # Committed branding is used on every build host, so Windows and Linux
+    # builds embed identical artwork. Regenerate with scripts/new_osint_workbench_icon.py.
+    foreach ($asset in @("Corvus.ico", "Corvus-wizard.bmp", "Corvus-header.bmp")) {
+        if (-not (Test-Path -LiteralPath (Join-Path $brandingDirectory $asset) -PathType Leaf)) {
+            throw "The Corvus branding asset '$asset' is missing from installer\windows\branding."
         }
-        & $iconGenerator -OutputPath $iconPath
-    } else {
-        if (-not (Test-Path -LiteralPath $portableIconGenerator -PathType Leaf)) {
-            throw "The portable Corvus icon generator is missing."
-        }
-        $python = Get-Command python3 -ErrorAction SilentlyContinue
-        if (-not $python) { $python = Get-Command python -ErrorAction SilentlyContinue }
-        if (-not $python) {
-            throw "Python with Pillow is required for a non-Windows installer build."
-        }
-        & $python.Source $portableIconGenerator --output $iconPath
-        if ($LASTEXITCODE -ne 0) { throw "The portable icon generator failed." }
-    }
-    if (-not (Test-Path -LiteralPath $iconPath -PathType Leaf)) {
-        throw "The branded Windows icon was not generated."
     }
 
     $makensis = Find-Makensis
@@ -119,6 +105,7 @@ try {
         "${definePrefix}SOURCE_REPOSITORY=$RepositoryUrl",
         "${definePrefix}PRODUCT_FILE_VERSION=$fileVersion",
         "${definePrefix}PRODUCT_ICON=$iconPath",
+        "${definePrefix}BRANDING_DIR=$brandingDirectory",
         "${definePrefix}PROJECT_ROOT=$root",
         "${definePrefix}PAYLOAD_DIR=$payloadDirectory",
         "${definePrefix}OUTPUT_DIR=$OutputDirectory"
