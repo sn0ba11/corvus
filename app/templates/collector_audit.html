@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ presentation.query or 'Username' }} · collector audit</title>
+  <style>
+    :root {
+      --ink:#17251d; --ink-soft:#394a3f; --muted:#68776d; --line:#d5ded6;
+      --paper:#fffefa; --canvas:#e8eee9; --panel:#f5f8f4; --brand:#294f39;
+      --brand-deep:#173526; --brand-soft:#e2ece3; --gold:#c4a45a;
+      --success:#287653; --success-soft:#e5f4ec; --warning:#8f5e1f;
+      --warning-soft:#fff2dc; --danger:#9e3747; --danger-soft:#fae9ed;
+      --shadow:0 22px 65px rgba(23,53,38,.13); --radius:14px;
+    }
+    * { box-sizing:border-box; }
+    html { background:var(--canvas); scroll-behavior:smooth; }
+    body { margin:0; color:var(--ink); background:var(--canvas); font:14px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif; }
+    a { color:var(--brand); text-underline-offset:2px; overflow-wrap:anywhere; }
+    button,input,select { font:inherit; }
+    code,.mono { font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace; }
+    .toolbar { position:sticky; top:0; z-index:30; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:11px max(18px,calc((100vw - 1320px)/2)); background:rgba(23,53,38,.97); color:#fff; box-shadow:0 7px 24px rgba(18,39,27,.22); backdrop-filter:blur(9px); }
+    .toolbar-brand { display:flex; align-items:center; gap:12px; }
+    .mini-mark { display:block; width:44px; height:44px; border-radius:11px; object-fit:cover; }
+    .toolbar-brand strong { display:block; font-size:12px; }
+    .toolbar-brand small { display:block; color:#d7e3d9; font-size:9px; letter-spacing:.08em; text-transform:uppercase; }
+    .toolbar-nav { display:flex; flex-wrap:wrap; gap:7px; }
+    .toolbar a,.toolbar button { border:1px solid rgba(255,255,255,.25); border-radius:8px; padding:7px 10px; background:rgba(255,255,255,.07); color:#fff; text-decoration:none; font-size:11px; font-weight:760; cursor:pointer; }
+    .toolbar button { background:#fff; color:var(--brand-deep); }
+    .shell { width:min(1320px,calc(100% - 34px)); margin:28px auto 55px; }
+    .hero { position:relative; overflow:hidden; padding:43px 48px 38px; border-radius:22px; color:#fff; background:linear-gradient(145deg,var(--brand-deep),var(--brand) 66%,#476d52); box-shadow:var(--shadow); }
+    .hero::after { content:""; position:absolute; right:-95px; top:-135px; width:390px; height:390px; border:1px solid rgba(255,255,255,.13); border-radius:50%; box-shadow:0 0 0 55px rgba(255,255,255,.035),0 0 0 110px rgba(255,255,255,.02); }
+    .hero-kicker { margin:0 0 10px; color:#d7e5da; font-size:10px; font-weight:850; letter-spacing:.18em; text-transform:uppercase; }
+    .hero h1 { position:relative; z-index:1; margin:0; font-size:clamp(36px,6vw,68px); line-height:1; letter-spacing:-.055em; overflow-wrap:anywhere; }
+    .hero-subtitle { position:relative; z-index:1; max-width:830px; margin:19px 0 0; color:#dbe7de; font-size:14px; }
+    .hero-meta { position:relative; z-index:1; display:flex; flex-wrap:wrap; gap:8px; margin-top:24px; }
+    .hero-meta span { padding:6px 9px; border:1px solid rgba(255,255,255,.24); border-radius:999px; background:rgba(255,255,255,.08); font-size:10px; font-weight:760; }
+    .notice { margin-top:15px; padding:13px 15px; border:1px solid #e5ca8a; border-left:5px solid var(--gold); border-radius:11px; background:#fff7e5; color:#65491c; box-shadow:0 8px 25px rgba(60,43,13,.06); }
+    .metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(155px,1fr)); gap:10px; margin-top:15px; }
+    .metric { min-height:100px; padding:15px 16px; border:1px solid var(--line); border-radius:var(--radius); background:var(--paper); box-shadow:0 8px 24px rgba(23,53,38,.055); }
+    .metric span { display:block; color:var(--muted); font-size:9px; font-weight:850; letter-spacing:.09em; text-transform:uppercase; }
+    .metric strong { display:block; margin-top:7px; font-size:29px; line-height:1; letter-spacing:-.04em; }
+    .metric small { display:block; margin-top:5px; color:var(--muted); font-size:9px; }
+    .section { margin-top:18px; padding:25px; border:1px solid rgba(23,53,38,.08); border-radius:18px; background:var(--paper); box-shadow:0 12px 36px rgba(23,53,38,.07); }
+    .section-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; margin-bottom:18px; padding-bottom:13px; border-bottom:2px solid var(--brand); }
+    .section-heading h2 { margin:0; font-size:23px; letter-spacing:-.025em; }
+    .section-heading p { margin:4px 0 0; color:var(--muted); font-size:11px; }
+    .count-pill,.badge,.source { display:inline-flex; align-items:center; border-radius:999px; font-weight:820; }
+    .count-pill { padding:6px 10px; background:var(--brand-soft); color:var(--brand); font-size:10px; white-space:nowrap; }
+    .badge { padding:3px 7px; background:var(--panel); color:var(--ink-soft); font-size:8px; letter-spacing:.04em; text-transform:uppercase; }
+    .badge.found,.badge.completed,.badge.corroborated,.badge.high { background:var(--success-soft); color:var(--success); }
+    .badge.unknown,.badge.likely,.badge.lead,.badge.medium,.badge.timed_out,.badge.rate_limited { background:var(--warning-soft); color:var(--warning); }
+    .badge.error,.badge.failed,.badge.low { background:var(--danger-soft); color:var(--danger); }
+    .badge.rich { background:var(--brand-soft); color:var(--brand); }
+    .source { margin:1px 2px 1px 0; padding:2px 6px; border:1px solid var(--line); background:var(--panel); color:var(--ink-soft); font-size:8px; }
+    .table-shell { overflow:hidden; border:1px solid var(--line); border-radius:12px; background:#fff; }
+    .table-scroll { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; }
+    th { padding:10px 11px; background:var(--brand-deep); color:#fff; font-size:8px; font-weight:850; letter-spacing:.08em; text-align:left; text-transform:uppercase; }
+    td { padding:10px 11px; border-bottom:1px solid var(--line); vertical-align:top; font-size:10px; }
+    tbody tr:nth-child(even) { background:#fafbf8; }
+    tbody tr:last-child td { border-bottom:0; }
+    .muted { color:var(--muted); }
+    .collector-name { display:block; font-weight:820; }
+    .platform-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:9px; }
+    .platform-card { display:flex; align-items:center; gap:10px; padding:12px; border:1px solid var(--line); border-radius:11px; background:#fff; }
+    .platform-mark,.account-mark { display:grid; place-items:center; flex:0 0 auto; background:var(--brand-soft); color:var(--brand); font-weight:900; text-transform:uppercase; }
+    .platform-mark { width:36px; height:36px; border-radius:10px; font-size:10px; }
+    .platform-card strong { display:block; font-size:11px; }
+    .platform-card span { display:block; color:var(--muted); font-size:9px; }
+    .filters { display:grid; grid-template-columns:minmax(220px,1fr) repeat(3,minmax(150px,.28fr)); gap:10px; margin-bottom:14px; }
+    .filters label { display:grid; gap:4px; color:var(--muted); font-size:9px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; }
+    .filters input,.filters select { width:100%; min-height:39px; padding:8px 10px; border:1px solid var(--line); border-radius:9px; background:#fff; color:var(--ink); }
+    .result-count { margin:0 0 12px; color:var(--muted); font-size:10px; }
+    .account-list { display:grid; gap:11px; }
+    .account-card { display:grid; grid-template-columns:54px minmax(0,1fr); gap:14px; padding:15px; border:1px solid var(--line); border-radius:var(--radius); background:#fff; break-inside:avoid; }
+    .account-card[hidden] { display:none; }
+    .account-mark { width:50px; height:50px; border-radius:14px; font-size:12px; }
+    .account-header { display:flex; align-items:flex-start; justify-content:space-between; gap:15px; }
+    .account-header h3 { margin:0; font-size:15px; }
+    .account-header h3 a { text-decoration:none; }
+    .account-url { display:block; margin-top:2px; color:var(--muted); font-size:9px; overflow-wrap:anywhere; }
+    .badges { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:5px; }
+    .profile-facts,.detail-list,.event-list { display:flex; flex-wrap:wrap; gap:5px 10px; margin-top:9px; color:var(--muted); font-size:9px; }
+    .detail-list span,.event-list span { padding:3px 6px; border:1px solid var(--line); border-radius:6px; background:var(--panel); }
+    .biography { margin:9px 0 0; color:var(--ink-soft); font-size:11px; white-space:pre-wrap; }
+    .image-link { display:inline-flex; margin-top:8px; padding:4px 7px; border:1px solid var(--line); border-radius:7px; background:var(--panel); font-size:9px; font-weight:760; text-decoration:none; }
+    .excluded-note { margin-top:8px; padding:8px 10px; border-left:4px solid var(--gold); background:#fff8e8; color:#6d4d17; font-size:9px; }
+    details { margin-top:9px; }
+    summary { color:var(--brand); font-size:9px; font-weight:800; cursor:pointer; }
+    .source-records { margin:8px 0 0; padding-left:18px; color:var(--muted); font-size:9px; }
+    .entity-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+    .entity-panel { overflow:hidden; border:1px solid var(--line); border-radius:12px; background:#fff; }
+    .entity-panel h3 { display:flex; justify-content:space-between; gap:10px; margin:0; padding:11px 12px; background:var(--brand-soft); color:var(--brand); font-size:12px; }
+    .entity-list { max-height:360px; overflow:auto; }
+    .entity-item { padding:9px 11px; border-top:1px solid var(--line); }
+    .entity-item:first-child { border-top:0; }
+    .entity-value { display:block; font-weight:760; overflow-wrap:anywhere; }
+    .entity-meta { display:block; margin-top:3px; color:var(--muted); font-size:8px; }
+    .timeline { position:relative; margin-left:7px; padding-left:27px; }
+    .timeline::before { content:""; position:absolute; left:8px; top:6px; bottom:6px; width:2px; background:var(--line); }
+    .timeline-event { position:relative; margin:0 0 13px; padding:11px 13px; border:1px solid var(--line); border-radius:11px; background:#fff; }
+    .timeline-event::before { content:""; position:absolute; left:-25px; top:15px; width:10px; height:10px; border:3px solid var(--paper); border-radius:50%; background:var(--brand); box-shadow:0 0 0 1px var(--line); }
+    .timeline-date { display:block; color:var(--muted); font-size:9px; font-weight:760; }
+    .timeline-title { display:block; margin-top:2px; font-size:12px; font-weight:820; }
+    .timeline-meta { display:flex; flex-wrap:wrap; gap:5px 9px; margin-top:5px; color:var(--muted); font-size:8px; }
+    .observation-list { display:grid; gap:9px; }
+    .observation { padding:11px 13px; border:1px solid #ead49e; border-radius:10px; background:#fff9eb; }
+    .observation strong { display:block; }
+    .observation p { margin:5px 0 0; color:#70501d; font-size:9px; }
+    .empty { padding:19px; border:1px dashed var(--line); border-radius:11px; background:var(--panel); color:var(--muted); text-align:center; }
+    footer { margin-top:18px; padding:18px 4px; color:var(--muted); font-size:9px; text-align:center; }
+    @media(max-width:1050px) { .metrics{grid-template-columns:repeat(3,1fr)} .platform-grid{grid-template-columns:repeat(3,1fr)} .entity-grid{grid-template-columns:repeat(2,1fr)} }
+    @media(max-width:720px) { .toolbar{position:static;align-items:flex-start;flex-direction:column}.shell{width:min(100% - 18px,1320px);margin-top:10px}.hero{padding:31px 22px}.metrics{grid-template-columns:repeat(2,1fr)}.section{padding:17px}.platform-grid,.entity-grid{grid-template-columns:1fr}.filters{grid-template-columns:1fr}.account-card{grid-template-columns:42px 1fr}.account-mark{width:40px;height:40px;border-radius:11px}.account-header{display:block}.badges{justify-content:flex-start;margin-top:7px}.section-heading{display:block}.count-pill{margin-top:8px}.toolbar-nav{display:none} }
+    @media print { @page{size:A4;margin:12mm} html,body{background:#fff;font-size:9px}.toolbar,.filters,.result-count{display:none!important}.shell{width:auto;margin:0}.hero{border-radius:0;box-shadow:none;break-after:page;min-height:250mm;padding:30mm 18mm}.hero h1{font-size:45px}.metrics{grid-template-columns:repeat(3,1fr)}.section{box-shadow:none;border-radius:0;padding:8mm 0;border-left:0;border-right:0}.account-card,.platform-card,.entity-panel,.timeline-event{break-inside:avoid}.account-list{gap:5px}.account-card{padding:9px}.account-card[hidden]{display:grid}.entity-list{max-height:none;overflow:visible}a{color:inherit;text-decoration:none} }
+  </style>
+</head>
+<body>
+<nav class="toolbar">
+  <div class="toolbar-brand"><img class="mini-mark" src="/static/corvus-mark.jpg?v=corvus-raster-2" alt=""><span><strong>Corvus</strong><small>Collector audit review</small></span></div>
+  <div class="toolbar-nav">
+    <a href="#collectors">Collectors</a><a href="#parser-gaps">Parser gaps</a><a href="#platforms">Platforms</a><a href="#accounts">Accounts</a><a href="#entities">Entities</a><a href="#timeline">Timeline</a><button type="button" data-print>Print / PDF</button>
+  </div>
+</nav>
+<main class="shell">
+  <header class="hero">
+    <p class="hero-kicker">Username collector comparison</p>
+    <h1>{{ presentation.query or 'Unknown query' }}</h1>
+    <p class="hero-subtitle">A CLI-generated review of overlapping collector output, normalized platform evidence, grouped entities and explicitly sourced timeline events.</p>
+    <div class="hero-meta"><span>{{ presentation.query_type|title }} search</span><span>Generated {{ presentation.generated_at }}</span><span>{{ presentation.summary.collector_count }} collectors</span></div>
+  </header>
+  <div class="notice"><strong>Identity boundary.</strong> {{ presentation.methodology.identity_warning }}</div>
+
+  <section class="metrics" aria-label="Audit metrics">
+    <div class="metric"><span>Raw records</span><strong>{{ presentation.summary.raw_record_count }}</strong><small>Before same-platform merging</small></div>
+    <div class="metric"><span>Account leads</span><strong>{{ presentation.summary.account_count }}</strong><small>Platform-specific records</small></div>
+    <div class="metric"><span>Corroborated</span><strong>{{ presentation.summary.corroborated_account_count }}</strong><small>Reported by multiple collectors</small></div>
+    <div class="metric"><span>Rich accounts</span><strong>{{ presentation.summary.rich_account_count }}</strong><small>Contain useful profile evidence</small></div>
+    <div class="metric"><span>Timeline events</span><strong>{{ presentation.summary.timeline_event_count }}</strong><small>Included after semantic review</small></div>
+    <div class="metric"><span>Excluded dates</span><strong>{{ presentation.summary.excluded_timeline_observation_count }}</strong><small>Retained but not treated as activity</small></div>
+    <div class="metric"><span>Parser gaps</span><strong>{{ presentation.summary.parser_gap_field_count }}</strong><small>{{ presentation.summary.high_priority_parser_gap_count }} high-priority fields</small></div>
+  </section>
+
+  <section class="section" id="collectors">
+    <div class="section-heading"><div><h2>Collector execution</h2><p>Per-tool outcome and parsed-result volume.</p></div><span class="count-pill">{{ presentation.collectors|length }} collectors</span></div>
+    <div class="table-shell"><div class="table-scroll"><table><thead><tr><th>Collector</th><th>Status</th><th>Parsed</th><th>Normalized</th><th>Found</th><th>Unknown</th><th>Rate limited</th><th>Recorded issue</th></tr></thead><tbody>
+      {% for collector in presentation.collectors %}<tr><td><span class="collector-name">{{ collector.display_name or collector.tool }}</span><span class="muted mono">{{ collector.tool }}</span></td><td><span class="badge {{ collector.state }}">{{ collector.state|replace('_',' ') }}</span></td><td>{{ collector.parsed_count or 0 }}</td><td>{{ collector.normalised_count or 0 }}</td><td>{{ collector.found_count or 0 }}</td><td>{{ collector.unknown_count or 0 }}</td><td>{{ 'Yes' if collector.rate_limited else 'No' }}</td><td class="muted">{{ collector.error_message or collector.parse_error or 'None recorded' }}</td></tr>{% else %}<tr><td colspan="8">No collector summaries were retained.</td></tr>{% endfor %}
+    </tbody></table></div></div>
+  </section>
+
+  <section class="section" id="parser-gaps">
+    <div class="section-heading"><div><h2>Parser-gap review</h2><p>Identity-bearing metadata values retained by collectors but not yet represented in account cards, entities or timeline events.</p></div><span class="count-pill">{{ presentation.parsing_gaps.field_count }} fields</span></div>
+    {% if presentation.parsing_gaps.fields %}<div class="table-shell"><div class="table-scroll"><table><thead><tr><th>Priority</th><th>Field</th><th>Occurrences</th><th>Platforms</th><th>Collectors</th><th>Example retained value</th></tr></thead><tbody>{% for item in presentation.parsing_gaps.fields %}<tr><td><span class="badge {{ item.priority }}">{{ item.priority }}</span></td><td><code>{{ item.field }}</code></td><td>{{ item.occurrences }}</td><td>{{ item.platforms|join(', ') }}</td><td>{{ item.tools|join(', ') }}</td><td>{% if item.examples %}{% set example = item.examples[0] %}{% if example.url %}<a href="{{ example.url }}" target="_blank" rel="noopener noreferrer">{{ example.value }}</a>{% else %}{{ example.value }}{% endif %}{% else %}—{% endif %}</td></tr>{% endfor %}</tbody></table></div></div>{% else %}<div class="empty">No likely identity-bearing parser gaps were detected.</div>{% endif %}
+  </section>
+
+  <section class="section" id="platforms">
+    <div class="section-heading"><div><h2>Platform coverage</h2><p>Account leads grouped by normalized platform label.</p></div><span class="count-pill">{{ presentation.platform_summary|length }} platforms</span></div>
+    <div class="platform-grid">
+      {% for item in presentation.platform_summary %}<div class="platform-card"><span class="platform-mark">{{ item.platform[:2] }}</span><div><strong>{{ item.platform }}</strong><span>{{ item.found }} found · {{ item.rich }} rich · {{ item.corroborated }} corroborated</span></div></div>{% else %}<div class="empty">No platform records were retained.</div>{% endfor %}
+    </div>
+  </section>
+
+  <section class="section" id="accounts">
+    <div class="section-heading"><div><h2>Account cards</h2><p>Duplicate collector records merged only within the same platform and account identifier.</p></div><span class="count-pill">{{ presentation.accounts|length }} leads</span></div>
+    <div class="filters" aria-label="Account filters">
+      <label>Search accounts<input type="search" placeholder="Platform, name, username, URL or collector" data-account-search></label>
+      <label>Status<select data-account-status><option value="">All statuses</option><option value="found">Found</option><option value="likely">Likely</option><option value="unknown">Unknown</option></select></label>
+      <label>Assessment<select data-account-classification><option value="">All assessments</option><option value="corroborated">Corroborated</option><option value="rich">Rich</option><option value="lead">Lead</option></select></label>
+      <label>Collector overlap<select data-account-overlap><option value="">Any source count</option><option value="multi">Multiple collectors</option><option value="single">Single collector</option></select></label>
+    </div>
+    <p class="result-count"><strong data-visible-count>{{ presentation.accounts|length }}</strong> of {{ presentation.accounts|length }} account cards visible.</p>
+    <div class="account-list">
+      {% for account in presentation.accounts %}
+      {% set profile = account.profile %}
+      {% set display_name = profile.display_name or profile.account_id or account.value or 'Unnamed account' %}
+      <article class="account-card" data-account-card data-status="{{ account.status }}" data-classification="{{ account.classification }}" data-source-count="{{ account.source_count }}" data-search="{{ account.platform }} {{ display_name }} {{ profile.account_id or '' }} {{ profile.location or '' }} {{ account.url or '' }} {{ account.sources|join(' ') }}">
+        <span class="account-mark">{{ account.platform[:2] }}</span>
+        <div>
+          <div class="account-header"><div><h3>{% if account.url %}<a href="{{ account.url }}" target="_blank" rel="noopener noreferrer">{{ display_name }}</a>{% else %}{{ display_name }}{% endif %}</h3><span class="account-url">{{ account.platform }}{% if account.url %} · {{ account.url }}{% endif %}</span></div><div class="badges"><span class="badge {{ account.status }}">{{ account.status }}</span><span class="badge {{ account.classification }}">{{ account.classification }}</span><span class="badge">{{ account.source_count }} source{% if account.source_count != 1 %}s{% endif %}</span></div></div>
+          <div class="profile-facts">{% if profile.account_id %}<span>Username: <strong>{{ profile.account_id }}</strong></span>{% endif %}{% if profile.location %}<span>Location: <strong>{{ profile.location }}</strong></span>{% endif %}{% if profile.followers is not none %}<span>{{ profile.followers }} followers</span>{% endif %}{% if profile.following is not none %}<span>{{ profile.following }} following</span>{% endif %}{% if profile.verified %}<span>Platform verified</span>{% endif %}{% for source in account.sources %}<span class="source">{{ source }}</span>{% endfor %}</div>
+          {% if profile.biography %}<p class="biography">{{ profile.biography }}</p>{% endif %}
+          {% if account.avatar_link %}<a class="image-link" href="{{ account.avatar_link }}" target="_blank" rel="noopener noreferrer">Open reported profile image</a>{% endif %}
+          {% if account.details %}<div class="detail-list">{% for item in account.details %}<span><strong>{{ item.label }}:</strong> {{ item.value }}</span>{% endfor %}</div>{% endif %}
+          {% set included = account.timeline_events|selectattr('include_in_timeline','ne',false)|list %}
+          {% set excluded = account.timeline_events|selectattr('include_in_timeline','equalto',false)|list %}
+          {% if included %}<div class="event-list">{% for event in included %}<span><strong>{{ event.label }}:</strong> {{ event.timestamp }}{% if event.confidence %} · {{ event.confidence }} confidence{% endif %}</span>{% endfor %}</div>{% endif %}
+          {% for event in excluded %}<div class="excluded-note"><strong>Excluded timeline observation:</strong> {{ event.label }} at {{ event.timestamp }}. {{ event.note or 'The date was retained but its meaning is not reliable enough for the combined timeline.' }}</div>{% endfor %}
+          <details><summary>Collector evidence and provenance</summary><ul class="source-records">{% for record in account.source_records %}<li><strong>{{ record.source_tool }}</strong> · {{ record.status }}{% if record.canonical_url %} · {{ record.canonical_url }}{% endif %}</li>{% endfor %}</ul></details>
+        </div>
+      </article>
+      {% else %}<div class="empty">No account records were retained.</div>{% endfor %}
+    </div>
+  </section>
+
+  <section class="section" id="entities">
+    <div class="section-heading"><div><h2>Grouped entities</h2><p>Values extracted from account evidence and grouped without asserting identity.</p></div><span class="count-pill">{{ presentation.summary.entity_counts.values()|sum }} values</span></div>
+    <div class="entity-grid">
+      {% for kind, values in presentation.entities.items() %}<article class="entity-panel"><h3><span>{{ kind|title }}</span><span>{{ values|length }}</span></h3><div class="entity-list">{% for item in values %}<div class="entity-item"><span class="entity-value">{{ item.value }}</span><span class="entity-meta">{{ item.account_count }} account{% if item.account_count != 1 %}s{% endif %} · {{ item.platforms|join(', ') }} · sources {{ item.sources|join(', ') }}</span></div>{% else %}<div class="entity-item muted">No values extracted.</div>{% endfor %}</div></article>{% endfor %}
+    </div>
+  </section>
+
+  <section class="section" id="timeline">
+    <div class="section-heading"><div><h2>Combined timeline</h2><p>Only dates whose semantics are sufficiently clear are included. Every event retains its source field and extractor.</p></div><span class="count-pill">{{ presentation.timeline|length }} events</span></div>
+    {% if presentation.timeline %}<div class="timeline">{% for event in presentation.timeline %}<article class="timeline-event"><span class="timeline-date">{{ event.timestamp }}{% if event.precision %} · {{ event.precision }} precision{% endif %}</span><span class="timeline-title">{{ event.platform }} · {{ event.label }}</span><div class="timeline-meta"><span>{{ event.display_name or event.username or 'Account' }}</span>{% if event.semantic %}<span>{{ event.semantic|replace('_',' ') }}</span>{% endif %}{% if event.confidence %}<span class="badge {{ event.confidence }}">{{ event.confidence }} confidence</span>{% endif %}<span>Field <code>{{ event.source_field }}</code></span>{% if event.extractor %}<span>Extractor {{ event.extractor }}</span>{% endif %}<span>Sources {{ event.sources|join(', ') }}</span></div></article>{% endfor %}</div>{% else %}<div class="empty">No explicit dated events were retained.</div>{% endif %}
+  </section>
+
+  <section class="section" id="excluded-observations">
+    <div class="section-heading"><div><h2>Excluded date observations</h2><p>Dates retained for transparency but not treated as user or account activity.</p></div><span class="count-pill">{{ presentation.excluded_timeline_observations|length }} observations</span></div>
+    {% if presentation.excluded_timeline_observations %}<div class="observation-list">{% for event in presentation.excluded_timeline_observations %}<article class="observation"><strong>{{ event.platform }} · {{ event.label }} · {{ event.timestamp }}</strong><p>{{ event.note or 'The date was retained but excluded because its meaning is ambiguous.' }} Field <code>{{ event.source_field }}</code>{% if event.extractor %}; extractor {{ event.extractor }}{% endif %}; source {{ event.sources|join(', ') }}.</p></article>{% endfor %}</div>{% else %}<div class="empty">No date observations were excluded.</div>{% endif %}
+  </section>
+
+  <footer>Generated locally by Corvus. This diagnostic report is an analysis aid; public-source leads require examiner review before operational use.</footer>
+</main>
+<script>
+(() => {
+  const cards = Array.from(document.querySelectorAll('[data-account-card]'));
+  const search = document.querySelector('[data-account-search]');
+  const status = document.querySelector('[data-account-status]');
+  const classification = document.querySelector('[data-account-classification]');
+  const overlap = document.querySelector('[data-account-overlap]');
+  const visible = document.querySelector('[data-visible-count]');
+  const apply = () => {
+    const needle = (search.value || '').trim().toLocaleLowerCase();
+    let count = 0;
+    cards.forEach((card) => {
+      const sourceCount = Number(card.dataset.sourceCount || 0);
+      const show = (!needle || card.dataset.search.toLocaleLowerCase().includes(needle))
+        && (!status.value || card.dataset.status === status.value)
+        && (!classification.value || card.dataset.classification === classification.value)
+        && (!overlap.value || (overlap.value === 'multi' ? sourceCount > 1 : sourceCount === 1));
+      card.hidden = !show;
+      if (show) count += 1;
+    });
+    visible.textContent = String(count);
+  };
+  [search, status, classification, overlap].forEach((control) => control.addEventListener('input', apply));
+  document.querySelector('[data-print]').addEventListener('click', () => window.print());
+})();
+</script>
+</body>
+</html>

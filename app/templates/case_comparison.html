@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Compare cases · Corvus{% endblock %}
+{% block content %}
+<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Dashboard</a><span>/</span><span>Compare cases</span></nav>
+<section class="panel">
+  <p class="eyebrow">CROSS-CASE ANALYSIS</p><h1>Shared evidence across {{ comparison.cases|length }} cases</h1>
+  <p>{{ comparison.limitation }}</p>
+  <p>Compares positive and likely findings already saved in these cases. Matching names, similar usernames or shared email providers alone do not create a match.</p>
+  <div class="case-actions"><a class="button" href="/compare-cases?{{ selection_query }}&amp;format=json" title="Download this comparison snapshot, including every listed shared signal and its evidence, as JSON">Export comparison JSON</a><a class="button" href="/compare-cases?{{ selection_query }}&amp;format=csv" title="Download one CSV row per piece of shared evidence, with case, sources, status and observed time">Export evidence CSV</a><a class="button" href="/" title="Return to the dashboard to select a different set of finished cases">Choose different cases</a></div>
+  <small>Snapshot {{ comparison.compared_at }} · {{ comparison.total_shared_signals }} shared signal{{ '' if comparison.total_shared_signals == 1 else 's' }}</small>
+</section>
+<section class="metric-grid comparison-cases">
+  {% for case in comparison.cases %}<article class="metric-card"><a href="/investigations/{{ case.id }}"><strong>{{ case.title }}</strong></a><code>{{ case.query }}</code><small>{{ case.query_type|title }} · {{ case.positive_count }} positive or likely findings</small></article>{% endfor %}
+</section>
+{% if comparison.truncated %}<section class="notice warning">Showing the first {{ comparison.signals|length }} of {{ comparison.total_shared_signals }} shared signals. Exports contain the same bounded selection. Compare fewer cases to narrow the results.</section>{% endif %}
+{% for signal in comparison.signals %}
+<section class="panel comparison-signal" data-signal-kind="{{ signal.kind }}">
+  <div class="section-title"><h2>{{ signal.label }}</h2><span class="badge">{{ signal.case_ids|length }} cases</span></div>
+  <code class="comparison-value">{{ signal.value }}</code>
+  {% if signal.kind == 'image' %}<p class="field-help">The same image bytes can be reused by unrelated accounts, including stock images or logos.</p>{% endif %}
+  {% if signal.kind == 'email' or signal.kind == 'key' %}<p class="field-help">Public commit identities and published keys may be shared, copied or unverified. Review the original source before drawing an identity conclusion.</p>{% endif %}
+  <div class="table-scroll"><table><thead><tr><th>Case</th><th>Sources</th><th>Status</th><th>Observed</th><th>Evidence</th></tr></thead><tbody>
+    {% for evidence in signal.evidence %}<tr><td data-label="Case"><a href="/investigations/{{ evidence.case_id }}">{{ evidence.case_title }}</a></td><td data-label="Sources">{{ evidence.sources|join(', ') }}</td><td data-label="Status"><span class="badge {{ evidence.status }}">{{ evidence.status }}</span></td><td data-label="Observed">{{ evidence.observed_at[:19]|replace("T", " ") }} UTC</td><td data-label="Evidence"><a href="/investigations/{{ evidence.case_id }}/raw-json?run_id={{ evidence.tool_run_id }}">Run evidence</a>{% if evidence.source_url %} · <a href="{{ evidence.source_url }}" target="_blank" rel="noopener noreferrer">Source URL</a>{% endif %}<small>Finding {{ evidence.finding_id }}</small></td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% else %}<section class="panel empty-state"><h2>No shared evidence found</h2><p>These cases do not currently share exact retained URLs, platform account IDs, public emails, signing keys or image hashes. This does not establish that the cases are unrelated.</p></section>{% endfor %}
+{% endblock %}

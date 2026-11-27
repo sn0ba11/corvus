@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ report.investigation.title }} · Corvus analytical report</title>
+  {% if interactive %}<link rel="stylesheet" href="/static/report.css">{% else %}<style>
+    :root{
+      --ink:#17251d;--ink-soft:#35483c;--muted:#66766b;--line:#d7e0d8;--line-strong:#b9c8bc;
+      --paper:#fffefa;--canvas:#e9efea;--panel:#f6f8f4;--brand:#294f39;--brand-deep:#173526;
+      --brand-soft:#e3ede4;--accent:#c8a75d;--success:#287653;--success-soft:#e5f4ec;
+      --warning:#94601d;--warning-soft:#fff3dd;--danger:#a43648;--danger-soft:#fbe9ed;
+      --shadow:0 24px 70px rgba(26,55,37,.14);--radius:14px
+    }
+    *{box-sizing:border-box}
+    html{background:var(--canvas)}
+    body{margin:0;color:var(--ink);background:var(--canvas);font:13px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    a{color:var(--brand);text-decoration-thickness:1px;text-underline-offset:2px}
+    code,.mono{font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace}
+    .toolbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:12px max(20px,calc((100vw - 1160px)/2));background:rgba(23,53,38,.97);color:#fff;box-shadow:0 7px 24px rgba(18,39,27,.24);backdrop-filter:blur(10px)}
+    .toolbar-brand{display:flex;align-items:center;gap:16px}.toolbar-brand .mini-mark{width:75px;height:75px;border-radius:18px}.toolbar-brand strong{letter-spacing:.01em}.toolbar-brand small{display:block;color:#d9e4dc}
+    .toolbar-actions{display:flex;gap:8px;flex-wrap:wrap}.toolbar a,.toolbar button{display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.28);border-radius:8px;padding:8px 12px;background:rgba(255,255,255,.08);color:#fff;text-decoration:none;font:inherit;font-weight:760;cursor:pointer}.toolbar .primary{background:#fff;color:var(--brand-deep)}
+    .report{width:min(1160px,calc(100% - 36px));margin:30px auto;background:var(--paper);box-shadow:var(--shadow);border:1px solid rgba(23,53,38,.08)}
+    .cover{position:relative;min-height:720px;padding:58px 64px 48px;overflow:hidden;background:linear-gradient(145deg,var(--brand-deep),var(--brand) 64%,#41674d);color:#fff}
+    .cover::before{content:"";position:absolute;right:-120px;top:-170px;width:520px;height:520px;border:1px solid rgba(255,255,255,.13);border-radius:50%;box-shadow:0 0 0 65px rgba(255,255,255,.035),0 0 0 130px rgba(255,255,255,.025)}
+    .cover::after{content:"";position:absolute;right:75px;bottom:70px;width:210px;height:210px;background:radial-gradient(circle at 20% 18%,rgba(255,255,255,.95) 0 3px,transparent 4px),radial-gradient(circle at 77% 30%,rgba(255,255,255,.8) 0 3px,transparent 4px),radial-gradient(circle at 53% 78%,rgba(255,255,255,.75) 0 3px,transparent 4px),linear-gradient(32deg,transparent 48%,rgba(255,255,255,.14) 49% 51%,transparent 52%),linear-gradient(154deg,transparent 48%,rgba(255,255,255,.14) 49% 51%,transparent 52%);opacity:.75}
+    .brand-lockup{position:relative;z-index:1;display:flex;align-items:center;gap:21px}.brand-symbol{display:block;width:100px;height:100px;border:1px solid rgba(255,255,255,.34);border-radius:24px;object-fit:cover;box-shadow:0 11px 30px rgba(0,0,0,.25)}.brand-name{font-size:23px;font-weight:840;letter-spacing:.08em}.brand-name small{display:block;margin-top:4px;color:#d5e2d8;font-size:10px;font-weight:750;letter-spacing:.18em;text-transform:uppercase}
+    .cover-content{position:relative;z-index:1;max-width:760px;margin-top:125px}.document-type{margin:0 0 14px;color:#d7e6da;font-size:10px;font-weight:850;letter-spacing:.22em;text-transform:uppercase}.cover h1{max-width:760px;margin:0;font-size:clamp(42px,6vw,72px);line-height:1.01;letter-spacing:-.055em}.cover-query{display:inline-block;max-width:100%;margin-top:26px;padding:8px 12px;border:1px solid rgba(255,255,255,.3);border-radius:8px;background:rgba(255,255,255,.09);font:13px/1.3 "SFMono-Regular",Consolas,monospace;overflow-wrap:anywhere}.cover-status{display:flex;align-items:center;gap:10px;margin-top:25px}.status-pill{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:99px;background:#e7f6ed;color:#236b49;font-size:9px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}.status-pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}.cover-status span:last-child{color:#d7e3d9;font-size:11px}
+    .cover-meta{position:absolute;z-index:1;left:64px;right:64px;bottom:44px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;padding-top:22px;border-top:1px solid rgba(255,255,255,.28)}.cover-meta span{display:block;color:#cddbd0;font-size:8px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.cover-meta strong{display:block;margin-top:4px;font-size:11px;font-weight:680;overflow-wrap:anywhere}
+    .document-control{display:grid;grid-template-columns:1.3fr repeat(3,minmax(0,.7fr));gap:14px;padding:22px 54px;border-bottom:1px solid var(--line);background:#fbfcf9}.control-item span{display:block;color:var(--muted);font-size:8px;font-weight:850;letter-spacing:.1em;text-transform:uppercase}.control-item strong{display:block;margin-top:3px;font-size:11px;overflow-wrap:anywhere}.control-note{color:var(--muted);font-size:10px}
+    .page{padding:48px 54px 54px}.page-header{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:36px;padding-bottom:16px;border-bottom:2px solid var(--brand)}.page-header-brand{display:flex;align-items:center;gap:16px;font-weight:830}.mini-mark{display:block;width:75px;height:75px;border-radius:18px;object-fit:cover}.page-header-meta{text-align:right;color:var(--muted);font-size:9px}
+    section{margin-top:44px}.section-heading{display:grid;grid-template-columns:38px 1fr;gap:13px;align-items:start;margin-bottom:17px}.section-number{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:var(--brand);color:#fff;font-size:11px;font-weight:900}.section-heading h2{margin:0;font-size:22px;line-height:1.15;letter-spacing:-.025em}.section-heading p{margin:4px 0 0;color:var(--muted);font-size:11px}
+    .metric-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}.metric{position:relative;min-height:105px;padding:16px 17px;border:1px solid var(--line);border-radius:var(--radius);background:linear-gradient(145deg,#fff,var(--panel));overflow:hidden}.metric::after{content:"";position:absolute;right:-17px;bottom:-24px;width:74px;height:74px;border-radius:50%;background:var(--brand-soft)}.metric span,.metric small,.metric strong{position:relative;z-index:1}.metric span{display:block;color:var(--muted);font-size:8px;font-weight:850;letter-spacing:.1em;text-transform:uppercase}.metric strong{display:block;margin:7px 0 1px;font-size:31px;line-height:1;letter-spacing:-.045em}.metric small{color:var(--muted);font-size:9px}
+    .overview-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(260px,.65fr);gap:16px;margin-top:17px}.narrative,.assessment,.callout,.notes{border:1px solid var(--line);border-radius:var(--radius);padding:20px;background:#fff}.narrative p:first-child{margin-top:0}.narrative p:last-child{margin-bottom:0}.assessment{background:var(--panel)}.assessment h3{margin:0 0 11px;font-size:13px}.assessment dl{margin:0}.assessment div{display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-bottom:1px solid var(--line)}.assessment div:last-child{border-bottom:0}.assessment dt{color:var(--muted);font-size:10px}.assessment dd{margin:0;font-weight:820}.caution{margin-top:14px;padding:12px 14px;border-left:4px solid var(--accent);background:#fff7e8;color:#624314;font-size:10px}
+    .platform-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.platform-card{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--line);border-radius:11px;background:#fff}.platform-mark{display:grid;place-items:center;flex:0 0 34px;width:34px;height:34px;border-radius:10px;background:var(--brand-soft);color:var(--brand);font-size:10px;font-weight:900;text-transform:uppercase}.platform-mark svg,.finding-mark svg{width:58%;height:58%;fill:currentColor}.platform-card strong{display:block;font-size:11px}.platform-card span{display:block;color:var(--muted);font-size:9px}
+    .finding-list{display:grid;gap:12px}.finding-card{display:grid;grid-template-columns:54px minmax(0,1fr) 150px;gap:15px;padding:16px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;break-inside:avoid}.finding-mark{display:grid;place-items:center;width:48px;height:48px;border-radius:14px;background:var(--brand-soft);color:var(--brand);font-weight:900;text-transform:uppercase}.finding-main h3{margin:0 0 4px;font-size:14px}.finding-main h3 a{text-decoration:none}.finding-main p{margin:6px 0;color:var(--ink-soft)}.finding-main .finding-url{display:block;color:var(--muted);font-size:9px;overflow-wrap:anywhere}.facts{display:flex;gap:5px 10px;flex-wrap:wrap;margin-top:8px;color:var(--muted);font-size:9px}.provenance{margin-top:8px;padding-top:8px;border-top:1px solid var(--line);color:var(--muted);font-size:9px}.finding-assessment{text-align:right}.badge{display:inline-flex;align-items:center;padding:3px 7px;border-radius:99px;background:var(--panel);color:var(--ink-soft);font-size:8px;font-weight:900;letter-spacing:.04em;text-transform:uppercase}.badge.found,.badge.completed{background:var(--success-soft);color:var(--success)}.badge.likely,.badge.rate_limited,.badge.manual_action_required,.badge.unknown{background:var(--warning-soft);color:var(--warning)}.badge.error,.badge.failed,.badge.timed_out,.badge.cancelled,.badge.not_found{background:var(--danger-soft);color:var(--danger)}.confidence-block{margin-top:9px;color:var(--muted);font-size:9px}.confidence-block strong{display:block;color:var(--ink);font-size:15px}.source{display:inline-flex;margin:1px;padding:2px 5px;border:1px solid var(--line);border-radius:5px;background:var(--panel);font-size:8px;font-weight:680}
+    .table-shell{overflow:hidden;border:1px solid var(--line);border-radius:12px;background:#fff}.table-scroll{overflow-x:auto}table{width:100%;border-collapse:collapse}thead{display:table-header-group}th{padding:10px 11px;background:var(--brand-deep);color:#fff;font-size:8px;font-weight:850;letter-spacing:.08em;text-align:left;text-transform:uppercase}td{padding:10px 11px;border-bottom:1px solid var(--line);vertical-align:top;font-size:9px}tbody tr:nth-child(even){background:#fafbf8}tbody tr:last-child td{border-bottom:0}.table-title{display:block;font-size:10px}.muted{color:var(--muted)}.hash{font:8px/1.45 "SFMono-Regular",Consolas,monospace;overflow-wrap:anywhere}.value-cell{min-width:260px;overflow-wrap:anywhere}.run-error{max-width:280px;color:var(--muted)}
+    .empty{padding:22px;border:1px dashed var(--line-strong);border-radius:12px;background:var(--panel);color:var(--muted);text-align:center}.notes{white-space:pre-wrap;background:var(--panel)}.limitations{margin:0;padding-left:20px}.limitations li{margin:7px 0}.report-footer{display:grid;grid-template-columns:1fr auto auto;gap:18px;margin-top:48px;padding-top:15px;border-top:1px solid var(--line);color:var(--muted);font-size:8px}.page-break{break-before:page}
+    @media(max-width:800px){body{background:var(--paper)}.report{width:100%;margin:0;border:0;box-shadow:none}.toolbar{position:static;padding:11px 15px}.cover{min-height:650px;padding:40px 25px}.cover-content{margin-top:90px}.cover h1{font-size:42px}.cover-meta{left:25px;right:25px;grid-template-columns:1fr 1fr}.document-control{grid-template-columns:1fr 1fr;padding:20px 24px}.page{padding:34px 24px}.metric-grid,.platform-grid{grid-template-columns:1fr 1fr}.overview-grid{grid-template-columns:1fr}.finding-card{grid-template-columns:45px 1fr}.finding-assessment{grid-column:2;text-align:left}.page-header{align-items:flex-start}.page-header-meta{text-align:left}.report-footer{grid-template-columns:1fr}}
+    @media print{
+      @page{size:A4;margin:13mm}
+      html,body{background:#fff;font-size:9px}.report{width:auto;margin:0;border:0;box-shadow:none}.toolbar{display:none}.cover{min-height:268mm;margin:-13mm;padding:24mm 18mm 18mm;break-after:page}.cover h1{font-size:46px}.cover-content{margin-top:46mm}.cover-meta{left:18mm;right:18mm;bottom:18mm}.document-control{margin:0 -13mm;padding:8mm 13mm}.page{padding:10mm 0 0}.page-header{margin-bottom:8mm}.section-heading h2{font-size:17px}.section-heading,section>h3{break-after:avoid;page-break-after:avoid}.section-heading+*,section>h3+*{break-before:avoid;page-break-before:avoid}.metric-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.metric{min-height:77px;padding:10px}.metric strong{font-size:22px}.overview-grid{gap:8px}.narrative,.assessment,.callout,.notes{padding:12px}.platform-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.platform-card{padding:8px}.finding-card{grid-template-columns:38px minmax(0,1fr) 105px;gap:9px;padding:10px}.finding-mark{width:34px;height:34px;border-radius:9px}.finding-main h3{font-size:10px}section{margin-top:8mm}.table-shell{border-radius:0}th{padding:5px 6px;font-size:6.5px}td{padding:5px 6px;font-size:7px}a{color:inherit;text-decoration:none}.page-break{break-before:page}.finding-card,.metric,.platform-card,.narrative,.assessment,.notes,.callout{break-inside:avoid}.report-footer{position:relative;margin-top:9mm}.screen-only{display:none!important}
+    }
+  </style>{% endif %}
+  {% if interactive %}<script src="/static/report.js" defer></script>{% endif %}
+</head>
+<body>
+{% if interactive %}
+<nav class="toolbar screen-only" aria-label="Report actions">
+  <div class="toolbar-brand"><img class="mini-mark" src="/static/corvus-mark.jpg?v=corvus-raster-2" alt=""><span><strong>Corvus</strong><small>Report preview</small></span></div>
+  <div class="toolbar-actions"><a href="/investigations/{{ report.investigation.id }}">Back to case</a><a href="/investigations/{{ report.investigation.id }}/export/html">Download HTML</a><button class="primary" type="button" data-print-report>Print / save PDF</button></div>
+</nav>
+{% endif %}
+<article class="report">
+  <header class="cover">
+    <div class="brand-lockup"><img class="brand-symbol" src="/static/corvus-mark.jpg?v=corvus-raster-2" alt=""><span class="brand-name">CORVUS<small>OSINT investigation workbench</small></span></div>
+    <div class="cover-content">
+      <p class="document-type">Open source intelligence · analytical report</p>
+      <h1>{{ report.investigation.title }}</h1>
+      <span class="cover-query">{{ report.investigation.query }}</span>
+      <div class="cover-status"><span class="status-pill">{{ report.investigation.status }}</span><span>{{ report.investigation.query_type|title }} investigation</span></div>
+    </div>
+    <div class="cover-meta">
+      <div><span>Case reference</span><strong>{{ report.investigation.case_reference or 'Not specified' }}</strong></div>
+      <div><span>Created UTC</span><strong>{{ report.investigation.created_at }}</strong></div>
+      <div><span>Generated UTC</span><strong>{{ report.summary.generated_at }}</strong></div>
+      <div><span>Document ID</span><strong>{{ report.investigation.id }}</strong></div>
+    </div>
+  </header>
+
+  <div class="document-control">
+    <div class="control-item"><span>Document purpose</span><strong>Investigative working report</strong><div class="control-note">Public-source leads require examiner assessment before operational use.</div></div>
+    <div class="control-item"><span>Application</span><strong>{{ report.application.name }}</strong></div>
+    <div class="control-item"><span>Version</span><strong>{{ report.application.version }}</strong></div>
+    <div class="control-item"><span>Build</span><strong class="mono">{{ report.application.build_commit[:12] }}</strong></div>
+  </div>
+
+  <main class="page">
+    <div class="page-header">
+      <div class="page-header-brand"><img class="mini-mark" src="/static/corvus-mark.jpg?v=corvus-raster-2" alt=""><span>Corvus · Analytical Report</span></div>
+      <div class="page-header-meta">{{ report.investigation.title }}<br>{{ report.investigation.case_reference or report.investigation.id }}</div>
+    </div>
+
+    <section>
+      <div class="section-heading"><span class="section-number">01</span><div><h2>Executive overview</h2><p>Collection outcome, evidential coverage and interpretation boundaries.</p></div></div>
+      <div class="metric-grid" aria-label="Investigation metrics">
+        <div class="metric"><span>Positive findings</span><strong>{{ report.summary.positive_findings }}</strong><small>{{ report.summary.found_findings }} classified found</small></div>
+        <div class="metric"><span>Platforms</span><strong>{{ report.summary.platform_count }}</strong><small>{{ report.summary.findings_total }} retained records</small></div>
+        <div class="metric"><span>Rich profiles</span><strong>{{ report.summary.rich_profile_count }}</strong><small>{{ report.summary.cached_image_count }} retained images</small></div>
+        <div class="metric"><span>Location evidence</span><strong>{{ report.summary.location_observation_count }}</strong><small>{{ report.summary.location_place_count }} normalised places</small></div>
+        <div class="metric"><span>Completed tool runs</span><strong>{{ report.summary.completed_run_count }}/{{ report.summary.tool_run_count }}</strong><small>{{ report.summary.failed_run_count }} unsuccessful</small></div>
+        <div class="metric"><span>Accepted links</span><strong>{{ report.summary.accepted_account_match_count + report.summary.accepted_image_match_count }}</strong><small>Analyst-reviewed decisions</small></div>
+      </div>
+      <div class="overview-grid">
+        <div class="narrative">
+          <p>The investigation retained <strong>{{ report.summary.findings_total }}</strong> source record{% if report.summary.findings_total != 1 %}s{% endif %} across <strong>{{ report.summary.platform_count }}</strong> platform{% if report.summary.platform_count != 1 %}s{% endif %}. <strong>{{ report.summary.positive_findings }}</strong> record{% if report.summary.positive_findings != 1 %}s were{% else %} was{% endif %} classified as found or likely by the reporting collector.</p>
+          {% if report.summary.search_import_count %}<p><strong>{{ report.summary.search_import_count }}</strong> records originated from analyst-selected or automated web-search evidence. Search results are leads based on titles, snippets and URLs; they are not independent proof of identity.</p>{% endif %}
+          {% if report.summary.rich_profile_count %}<p><strong>{{ report.summary.rich_profile_count }}</strong> positive findings contained identity-bearing fields such as a display name, biography, account identifier or declared location. <strong>{{ report.summary.cached_image_count }}</strong> images were retained locally with cryptographic provenance.</p>{% endif %}
+          {% if report.summary.location_observation_count %}<p>Location analysis contains <strong>{{ report.summary.location_observation_count }}</strong> observations covering <strong>{{ report.summary.location_place_count }}</strong> place labels. These observations support further enquiry but do not independently establish residence or physical presence.</p>{% endif %}
+          {% if report.summary.account_match_count or report.summary.image_match_count %}<p>Correlation produced {{ report.summary.account_match_count }} account candidate{% if report.summary.account_match_count != 1 %}s{% endif %} and {{ report.summary.image_match_count }} image candidate{% if report.summary.image_match_count != 1 %}s{% endif %}. Only analyst-accepted decisions are counted as supported links.</p>{% endif %}
+          <div class="caution"><strong>Interpretation notice.</strong> A positive collector result is a lead, not proof that the investigated person owns or controls the account. Review source content, existence validation, provenance and correlation rationale before relying on it.</div>
+        </div>
+        <aside class="assessment"><h3>Collection assessment</h3><dl><div><dt>Completed runs</dt><dd>{{ report.summary.completed_run_count }}</dd></div><div><dt>Failed / cancelled</dt><dd>{{ report.summary.failed_run_count }}</dd></div><div><dt>Rate limited</dt><dd>{{ report.summary.rate_limited_run_count }}</dd></div><div><dt>Browser captures</dt><dd>{{ report.summary.browser_completed_count }}/{{ report.summary.browser_run_count }}</dd></div><div><dt>Manual browser action</dt><dd>{{ report.summary.browser_manual_action_count }}</dd></div><div><dt>Unknown findings</dt><dd>{{ report.summary.unknown_findings }}</dd></div><div><dt>Finding errors</dt><dd>{{ report.summary.error_findings }}</dd></div></dl></aside>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-heading"><span class="section-number">01A</span><div><h2>Investigator notes</h2><p>Case-specific context recorded by the examiner and intentionally placed before detailed findings.</p></div></div>
+      <div class="notes">{{ report.investigation.notes or 'No investigator notes were recorded.' }}</div>
+    </section>
+
+    {% if report.account_view.enabled %}
+    <section>
+      <div class="section-heading"><span class="section-number">01B</span><div><h2>Unified account assessment</h2><p>Duplicate collector records combined by platform and account identifier, with grouped identity fields and dated evidence.</p></div></div>
+      <div class="metric-grid">
+        <div class="metric"><span>Unified accounts</span><strong>{{ report.account_view.summary.account_count }}</strong><small>{{ report.account_view.summary.corroborated_account_count }} multi-collector</small></div>
+        <div class="metric"><span>Priority review</span><strong>{{ report.account_view.summary.priority_account_count }}</strong><small>Rich or corroborated evidence</small></div>
+        <div class="metric"><span>Technical candidates</span><strong>{{ report.account_view.summary.technical_account_count }}</strong><small>Retained below stronger evidence</small></div>
+        <div class="metric"><span>Case timeline events</span><strong>{{ report.account_view.summary.timeline_event_count }}</strong><small>{{ report.account_view.summary.account_timeline_event_count }} account events · {{ report.account_view.summary.excluded_timeline_observation_count }} excluded dates</small></div>
+        <div class="metric"><span>Names</span><strong>{{ report.account_view.summary.entity_counts.names }}</strong><small>Grouped extracted values</small></div>
+        <div class="metric"><span>Images</span><strong>{{ report.account_view.summary.entity_counts.images }}</strong><small>Profile and related image URLs</small></div>
+      </div>
+      <div class="caution"><strong>Identity notice.</strong> {{ report.account_view.methodology.identity_warning }} {{ report.account_view.methodology.technical_lead_policy }}</div>
+      <h3>Priority and positive account cards</h3>
+      <div class="finding-list">
+      {% set report_accounts = report.account_view.groups.priority + report.account_view.groups.found %}
+      {% for account in report_accounts[:40] %}{% set profile = account.profile %}
+        <article class="finding-card">
+          <div class="finding-mark">{% set icon = platform_icon_svg(account.platform) %}{% if icon %}{{ icon|safe }}{% else %}{{ (account.platform or 'OS')[:2] }}{% endif %}</div>
+          <div class="finding-main">
+            <h3>{% if account.url and account.status in ['found','likely'] %}<a href="{{ account.url }}">{{ profile.display_name or profile.account_id or account.value or account.platform }}</a>{% else %}{{ profile.display_name or profile.account_id or account.value or account.platform }}{% endif %}</h3>
+            <span class="finding-url">{{ account.platform }} · {{ account.group_reason }}{% if account.url %} · {{ account.url }}{% endif %}</span>
+            {% if profile.biography %}<p>{{ profile.biography }}</p>{% endif %}
+            <div class="facts">{% if profile.account_id %}<span>Username/ID: {{ profile.account_id }}</span>{% endif %}{% if profile.location %}<span>Location: {{ profile.location }}</span>{% endif %}{% if profile.followers is not none %}<span>{{ profile.followers }} followers</span>{% endif %}{% if profile.following is not none %}<span>{{ profile.following }} following</span>{% endif %}{% for detail in account.details[:12] %}<span>{{ detail.label }}: {{ detail.value }}</span>{% endfor %}</div>
+            <div class="provenance"><strong>Sources:</strong> {% for source in account.sources %}<span class="source">{{ source }}</span>{% endfor %} · {{ account.source_count }} collector{% if account.source_count != 1 %}s{% endif %}</div>
+          </div>
+          <div class="finding-assessment"><span class="badge {{ account.status }}">{{ account.status }}</span><div class="confidence-block"><span>Presentation group</span><strong>{{ account.group|title }}</strong></div></div>
+        </article>
+      {% else %}<div class="empty">No priority or positive account cards were produced.</div>{% endfor %}
+      </div>
+      {% if report_accounts|length > 40 %}<p class="muted">{{ report_accounts|length - 40 }} additional positive account cards are retained in the JSON evidence and technical register.</p>{% endif %}
+      <h3>Combined case timeline</h3>
+      {% if report.account_view.timeline %}<div class="table-shell"><div class="table-scroll"><table><thead><tr><th>Date/time</th><th>Source</th><th>Event</th><th>Account / subject</th><th>Source semantics</th></tr></thead><tbody>{% for event in report.account_view.timeline[:75] %}<tr><td>{{ event.timestamp }}</td><td>{{ event.platform }}</td><td><strong>{{ event.label }}</strong>{% if event.confidence %}<br><span class="muted">{{ event.confidence }} confidence</span>{% endif %}</td><td>{{ event.display_name or event.username or 'Case event' }}</td><td><code>{{ event.source_field }}</code>{% if event.extractor %}<br><span class="muted">{{ event.extractor }}</span>{% endif %}</td></tr>{% endfor %}</tbody></table></div></div>{% else %}<div class="empty">No dated case events were parsed.</div>{% endif %}
+      {% if report.account_view.excluded_timeline_observations %}<div class="caution"><strong>Excluded date observations:</strong> {% for event in report.account_view.excluded_timeline_observations %}{{ event.platform }} {{ event.label }} ({{ event.timestamp }}){% if not loop.last %}; {% endif %}{% endfor %}. These dates remain in the evidence but are not treated as user activity.</div>{% endif %}
+      {% if report.account_view.parsing_gaps.field_count %}<div class="caution"><strong>Parser review:</strong> {{ report.account_view.parsing_gaps.field_count }} identity-bearing metadata fields were retained but are not represented in the account projection.</div>{% endif %}
+    </section>
+    {% endif %}
+
+    <section>
+      <div class="section-heading"><span class="section-number">02</span><div><h2>Positive findings</h2><p>Found and likely source records, presented with identity fields and provenance.</p></div></div>
+      {% set positive_count = namespace(value=0) %}
+      <div class="finding-list">
+      {% for finding in report.findings %}{% if finding.status in ['found','likely'] %}{% set positive_count.value = positive_count.value + 1 %}
+        <article class="finding-card">
+          <div class="finding-mark">{% set icon = platform_icon_svg(finding.platform) %}{% if icon %}{{ icon|safe }}{% else %}{{ (finding.platform or 'OS')[:2] }}{% endif %}</div>
+          <div class="finding-main">
+            <h3>{% if finding.canonical_url %}<a href="{{ finding.canonical_url }}">{{ finding.profile.display_name or finding.title or finding.value or finding.canonical_url }}</a>{% else %}{{ finding.profile.display_name or finding.title or finding.value or 'Unlabelled finding' }}{% endif %}</h3>
+            <span class="finding-url">{{ finding.platform or 'Uncategorised' }} · {{ finding.finding_type|replace('_',' ') }}{% if finding.canonical_url %} · {{ finding.canonical_url }}{% endif %}</span>
+            {% if finding.description %}<p>{{ finding.description }}</p>{% endif %}
+            <div class="facts">{% if finding.profile.account_id %}<span>Account ID: {{ finding.profile.account_id }}</span>{% endif %}{% if finding.profile.location %}<span>Location: {{ finding.profile.location }}</span>{% endif %}{% if finding.profile.followers is not none %}<span>{{ finding.profile.followers }} followers</span>{% endif %}{% if finding.profile.following is not none %}<span>{{ finding.profile.following }} following</span>{% endif %}{% if finding.profile.verified %}<span>Platform verified</span>{% endif %}{% for detail in finding.platform_details %}<span>{{ detail.label }}: {{ detail.value }}</span>{% endfor %}</div>
+            {% if finding.metadata.search_import %}<div class="provenance"><strong>Analyst-imported search result:</strong> {{ finding.metadata.search_import.engine|title }} · {{ finding.metadata.search_import.query_label }}</div>{% endif %}
+            {% if finding.metadata.query_matches %}<div class="provenance"><strong>{% if finding.metadata.engine == 'bing' %}Matched Bing queries:{% else %}Matched search queries:{% endif %}</strong> {% for match in finding.metadata.query_matches %}{{ match.query_label }}{% if not loop.last %} · {% endif %}{% endfor %}{% if finding.metadata.search_engines %}<br><strong>Search engines:</strong> {{ finding.metadata.search_engines|join(', ') }}{% endif %}</div>{% endif %}
+            {% if finding.metadata.wayback and finding.metadata.wayback.first_capture %}<div class="provenance"><strong>First archived:</strong> {{ finding.metadata.wayback.first_capture.captured_at[:10] }} · <strong>latest distinct capture:</strong> {{ finding.metadata.wayback.latest_capture.captured_at[:10] }} · {{ finding.metadata.wayback.capture_count }} capture{% if finding.metadata.wayback.capture_count != 1 %}s{% endif %}</div>{% endif %}
+            <div class="provenance"><strong>Sources:</strong> {% for source in finding.source_tools %}<span class="source">{{ source }}</span>{% endfor %} · observed {{ finding.observed_at }}</div>
+          </div>
+          <div class="finding-assessment"><span class="badge {{ finding.status }}">{{ finding.status }}</span>{% if finding.metadata.verification and finding.metadata.verification.existence_state %}<div class="confidence-block"><span>Existence</span><strong>{{ finding.metadata.verification.existence_state|replace('_',' ')|title }}</strong>{% if finding.metadata.verification.existence_confidence is not none %}{{ (finding.metadata.verification.existence_confidence * 100)|round|int }}% evidence confidence{% endif %}</div>{% endif %}{% if finding.confidence is not none %}<div class="confidence-block"><span>Identity-link confidence</span><strong>{{ (finding.confidence * 100)|round|int }}%</strong></div>{% endif %}<div class="confidence-block"><span>Image evidence</span><strong>{{ finding.avatar_evidence.state|replace('_',' ') }}</strong>{% if finding.avatar_evidence.mime_type or finding.avatar_evidence.byte_size %}<span>{{ finding.avatar_evidence.mime_type or 'unknown type' }}{% if finding.avatar_evidence.byte_size %} · {{ finding.avatar_evidence.byte_size }} bytes{% endif %}</span>{% endif %}{% if finding.avatar_evidence.sha256 %}<span class="hash">SHA-256 {{ finding.avatar_evidence.sha256 }}</span>{% endif %}</div></div>
+        </article>
+      {% endif %}{% endfor %}
+      </div>
+      {% if positive_count.value == 0 %}<div class="empty">No found or likely findings were retained. Review the tool execution section for collection failures, rejected search noise and limitations.</div>{% endif %}
+    </section>
+
+    <section>
+      <div class="section-heading"><span class="section-number">03</span><div><h2>Platform coverage and location intelligence</h2><p>Distribution of retained findings and supporting geographic observations.</p></div></div>
+      {% if report.summary.platform_summary %}<div class="platform-grid">{% for platform in report.summary.platform_summary %}<div class="platform-card"><span class="platform-mark">{% set icon = platform_icon_svg(platform.platform) %}{% if icon %}{{ icon|safe }}{% else %}{{ platform.platform[:2] }}{% endif %}</span><div><strong>{{ platform.platform }}</strong><span>{{ platform.positive_count }} positive · {{ platform.count }} total</span></div></div>{% endfor %}</div>{% else %}<div class="empty">No platform findings were retained.</div>{% endif %}
+      <div class="section-spacer" aria-hidden="true"></div>
+      <h3>Location intelligence</h3>
+      <p class="muted">Location observations are supporting evidence only and do not independently prove residence or physical presence.</p>
+      {% if report.location_summary %}<div class="table-shell"><div class="table-scroll"><table><thead><tr><th>Place</th><th>Assessment</th><th>Support</th><th>Sources</th><th>Date range</th><th>Confidence</th></tr></thead><tbody>{% for place in report.location_summary %}<tr><td><strong class="table-title">{{ place.place_name }}</strong>{% if place.locality or place.region or place.country %}<span class="muted">{{ [place.locality, place.region, place.country]|select|join(', ') }}</span>{% endif %}</td><td>{{ place.classification|replace('_',' ')|title }}</td><td>{{ place.observation_count }} observation{% if place.observation_count != 1 %}s{% endif %}{% if place.privacy_masked_count %}<br><span class="muted">{{ place.privacy_masked_count }} privacy masked</span>{% endif %}</td><td>{% for source in place.source_platforms %}<span class="source">{{ source }}</span>{% endfor %}</td><td>{{ place.earliest_occurred_at or place.first_observed_at }}{% if place.latest_occurred_at and place.latest_occurred_at != place.earliest_occurred_at %}<br>to {{ place.latest_occurred_at }}{% endif %}</td><td>{{ (place.maximum_confidence * 100)|round|int }}%</td></tr>{% endfor %}</tbody></table></div></div>{% else %}<div class="empty">No location observations were recorded.</div>{% endif %}
+    </section>
+
+    <section class="page-break">
+      <div class="section-heading"><span class="section-number">04</span><div><h2>Collection provenance</h2><p>Tool identity, query scope, runtime and recorded limitations for every run.</p></div></div>
+      <div class="table-shell"><div class="table-scroll"><table><thead><tr><th>Collector</th><th>Query scope</th><th>Version / commit</th><th>Status</th><th>Runtime</th><th>Error or limitation</th></tr></thead><tbody>{% for run in report.tool_runs %}<tr><td><strong class="table-title">{{ run.display_name }}</strong><span class="muted">{{ run.tool_id }}</span></td><td><strong>{{ run.query_type|replace('_',' ')|title }}</strong><br><code>{{ run.query_value }}</code>{% if run.pivot_depth %}<br><span class="muted">Depth {{ run.pivot_depth }} · {{ 'automatic' if run.pivot_automatic else 'analyst-approved' }} pivot</span>{% endif %}</td><td>{{ run.version or 'Unreported' }}<br><span class="hash">{{ run.commit or 'Unreported' }}</span></td><td><span class="badge {{ run.status }}">{{ run.status|replace('_',' ') }}</span>{% if run.rate_limited %}<br><span class="badge rate_limited">rate limited</span>{% endif %}</td><td>{% if run.duration_ms is not none %}{{ (run.duration_ms / 1000)|round(1) }}s{% else %}—{% endif %}<br><span class="muted">limit {{ run.timeout_seconds }}s</span></td><td class="run-error">{{ run.error_message or 'No collector error recorded.' }}</td></tr>{% else %}<tr><td colspan="6">No automated collectors were run.</td></tr>{% endfor %}</tbody></table></div></div>
+    </section>
+
+    {% if report.browser_runs %}
+    <section>
+      <div class="section-heading"><span class="section-number">05</span><div><h2>Managed browser evidence</h2><p>Locally retained screenshots, bounded HTML and manifest hashes.</p></div></div>
+      <div class="table-shell"><div class="table-scroll"><table><thead><tr><th>Capture</th><th>Requested source</th><th>Status</th><th>Observed</th><th>Browser</th><th>Evidence hashes</th><th>Limitation</th></tr></thead><tbody>{% for run in report.browser_runs %}<tr><td><strong class="table-title">{{ run.collector_id|replace('_',' ')|title }}</strong><span class="muted">{{ run.session_name }}</span></td><td class="value-cell">{% if run.final_url %}<a href="{{ run.final_url }}">{{ run.page_title or run.final_url }}</a>{% else %}{{ run.requested_url }}{% endif %}{% if run.final_url and run.final_url != run.requested_url %}<br><span class="muted">Requested {{ run.requested_url }}</span>{% endif %}</td><td><span class="badge {{ run.status }}">{{ run.status|replace('_',' ') }}</span></td><td>{{ run.observed_at or run.finished_at or run.started_at or '—' }}</td><td>{{ run.browser_version or 'Unreported' }}</td><td>{% if run.evidence.screenshot_sha256 %}<div class="hash">PNG {{ run.evidence.screenshot_sha256 }}</div>{% endif %}{% if run.evidence.html_sha256 %}<div class="hash">HTML {{ run.evidence.html_sha256 }}</div>{% endif %}{% if run.evidence.manifest_sha256 %}<div class="hash">Manifest {{ run.evidence.manifest_sha256 }}</div>{% endif %}{% if not run.evidence.screenshot_sha256 and not run.evidence.html_sha256 and not run.evidence.manifest_sha256 %}—{% endif %}</td><td>{{ run.error_message or ('Manual challenge handling required' if run.status == 'manual_action_required' else '—') }}</td></tr>{% endfor %}</tbody></table></div></div>
+    </section>
+    {% endif %}
+
+    <section class="page-break">
+      <div class="section-heading"><span class="section-number">{{ '06' if report.browser_runs else '05' }}</span><div><h2>Complete technical evidence register</h2><p>Every retained finding, including unknown, contradicted and error records.</p></div></div>
+      <div class="table-shell"><div class="table-scroll"><table><thead><tr><th>Platform</th><th>Type and value</th><th>Status / validation</th><th>Identity confidence</th><th>Sources</th><th>Observed UTC</th></tr></thead><tbody>{% for finding in report.findings|sort(attribute='platform') %}<tr><td><strong class="table-title">{{ finding.platform or 'Uncategorised' }}</strong></td><td class="value-cell"><span class="muted">{{ finding.finding_type|replace('_',' ') }}</span><br>{% if finding.canonical_url %}<a href="{{ finding.canonical_url }}">{{ finding.value or finding.canonical_url }}</a>{% else %}{{ finding.value or '—' }}{% endif %}{% if finding.description %}<br><span class="muted">{{ finding.description }}</span>{% endif %}{% if finding.metadata.search_import %}<br><span class="muted">Analyst-imported {{ finding.metadata.search_import.engine|title }} result · {{ finding.metadata.search_import.query_label }}</span>{% endif %}{% if finding.metadata.query_matches %}<br><span class="muted">{% if finding.metadata.engine == 'bing' %}Matched Bing queries:{% else %}Matched search queries:{% endif %} {% for match in finding.metadata.query_matches %}{{ match.query_label }}{% if not loop.last %} · {% endif %}{% endfor %}{% if finding.metadata.search_engines %} · {{ finding.metadata.search_engines|join(', ') }}{% endif %}</span>{% endif %}{% if finding.metadata.wayback and finding.metadata.wayback.first_capture %}<br><span class="muted">First archived: {{ finding.metadata.wayback.first_capture.captured_at[:10] }} · latest distinct capture {{ finding.metadata.wayback.latest_capture.captured_at[:10] }}</span>{% endif %}{% if finding.profile.display_name %}<br><strong>{{ finding.profile.display_name }}</strong>{% endif %}{% if finding.profile.location %}<br><span class="muted">Location: {{ finding.profile.location }}</span>{% endif %}{% if finding.profile.followers is not none %}<br><span class="muted">{{ finding.profile.followers }} followers{% if finding.profile.following is not none %} · {{ finding.profile.following }} following{% endif %}</span>{% endif %}{% for detail in finding.platform_details %}<br><span class="muted">{{ detail.label }}: {{ detail.value }}</span>{% endfor %}</td><td><span class="badge {{ finding.status }}">{{ finding.status|replace('_',' ') }}</span>{% if finding.metadata.verification and finding.metadata.verification.existence_state %}<br><span class="muted">Existence: {{ finding.metadata.verification.existence_state|replace('_',' ') }}</span>{% endif %}</td><td>{% if finding.confidence is not none %}{{ (finding.confidence * 100)|round|int }}%{% else %}Not assigned{% endif %}</td><td>{% for source in finding.source_tools %}<span class="source">{{ source }}</span>{% endfor %}</td><td>{{ finding.observed_at }}</td></tr>{% else %}<tr><td colspan="6">No findings were retained.</td></tr>{% endfor %}</tbody></table></div></div>
+    </section>
+
+    <section>
+      <div class="section-heading"><span class="section-number">{{ '07' if report.browser_runs else '06' }}</span><div><h2>Limitations and interpretation</h2><p>Mandatory qualifications applying to this report.</p></div></div>
+      <div class="callout"><ul class="limitations">{% for item in report.limitations %}<li>{{ item }}</li>{% endfor %}</ul></div>
+    </section>
+
+    <footer class="report-footer"><span>Generated locally by {{ report.application.name }} {{ report.application.version }}.</span><span>Investigation {{ report.investigation.id }}</span><span>Schema {{ report.schema_version }}</span></footer>
+  </main>
+</article>
+</body>
+</html>

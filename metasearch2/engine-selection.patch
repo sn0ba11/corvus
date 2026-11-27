@@ -1,0 +1,48 @@
+diff --git a/src/web/search.rs b/src/web/search.rs
+index 2cb280e..c852b4a 100644
+--- a/src/web/search.rs
++++ b/src/web/search.rs
+@@ -1,7 +1,7 @@
+ mod all;
+ mod images;
+ 
+-use std::{collections::HashMap, net::SocketAddr, str::FromStr};
++use std::{collections::{HashMap, HashSet}, net::SocketAddr, str::FromStr, sync::Arc};
+ 
+ use async_stream::stream;
+ use axum::{
+@@ -147,6 +147,25 @@ pub async fn route(
+         .and_then(|t| SearchTab::from_str(t).ok())
+         .unwrap_or_default();
+ 
++    let mut request_config = config.clone();
++    if let Some(raw_engines) = params.get("engines") {
++        let selected: HashSet<Engine> = raw_engines
++            .split(',')
++            .filter_map(|value| Engine::from_str(value.trim()).ok())
++            .collect();
++        let mut engines = request_config.engines.as_ref().clone();
++        for &engine in Engine::all() {
++            let mut engine_config = engines
++                .map
++                .get(&engine)
++                .cloned()
++                .unwrap_or_default();
++            engine_config.enabled = selected.contains(&engine);
++            engines.map.insert(engine, engine_config);
++        }
++        request_config.engines = Arc::new(engines);
++    }
++
+     let query = SearchQuery {
+         query,
+         tab: search_tab,
+@@ -167,7 +186,7 @@ pub async fn route(
+                 || addr.ip().to_string(),
+                 |ip| ip.to_str().unwrap_or_default().to_string(),
+             ),
+-        config: config.clone().into(),
++        config: request_config.into(),
+     };
+ 
+     let trying_to_use_api = query

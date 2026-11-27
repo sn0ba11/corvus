@@ -1,0 +1,6 @@
+*.py text eol=lf
+*.sh text eol=lf
+*.patch text eol=lf whitespace=-blank-at-eol
+*.command text eol=lf
+Dockerfile text eol=lf
+*.ps1 text eol=crlf

@@ -1,0 +1,40 @@
+<section class="panel section-block" aria-labelledby="installed-changes-heading">
+  <div class="panel-heading release-highlight-heading">
+    <div>
+      <p class="eyebrow">WHAT'S NEW</p>
+      <h2 id="installed-changes-heading">Changes installed in this update</h2>
+    </div>
+    {% if build_range and not build_range.fallback_used %}
+    <span class="source">{{ build_range.from_commit[:8] }} → {{ build_range.to_commit[:8] }}</span>
+    {% endif %}
+  </div>
+
+  {% if update_changelog and update_changelog.changes %}
+  <details class="technical-update-record">
+    <summary>Technical record from the most recent update</summary>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Date</th><th>Commit</th><th>Change</th></tr></thead>
+        <tbody>
+        {% for change in update_changelog.changes %}
+          <tr>
+            <td>{{ change.date or 'Not recorded' }}</td>
+            <td>{% if change.commit %}<code>{{ change.commit[:12] }}</code>{% else %}<span class="muted">—</span>{% endif %}</td>
+            <td>
+              <strong>{{ change.summary }}</strong>
+              {% if change.details %}
+              <ul class="changelog-details">
+                {% for detail in change.details %}<li>{{ detail }}</li>{% endfor %}
+              </ul>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </details>
+  {% else %}
+  <p>See the full changelog for this release.</p>
+  {% endif %}
+</section>

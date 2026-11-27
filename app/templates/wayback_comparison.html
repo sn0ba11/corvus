@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Archived comparison · {{ investigation.title }}{% endblock %}
+{% block content %}
+<div class="section-title">
+  <div><p class="eyebrow">ARCHIVED PAGE COMPARISON</p><h1>{{ investigation.title }}</h1></div>
+  <a href="/investigations/{{ investigation.id }}/wayback">Back to Wayback discovery</a>
+</div>
+{% if error %}
+<section class="panel"><p class="badge error">{{ error }}</p></section>
+{% elif comparison %}
+<section class="panel">
+  <h2>{{ comparison.first.original_url }}</h2>
+  <p class="muted">First {{ comparison.first.timestamp }} · Latest {{ comparison.latest.timestamp }}</p>
+  <div class="form-grid">
+    <div><strong>First SHA-256</strong><pre>{{ comparison.first.content_sha256 }}</pre></div>
+    <div><strong>Latest SHA-256</strong><pre>{{ comparison.latest.content_sha256 }}</pre></div>
+  </div>
+</section>
+{% if comparison.avatar %}
+<section class="panel">
+  <div class="section-title"><h2>Historical profile image</h2><span class="badge">{{ comparison.avatar.classification }}</span></div>
+  {% if comparison.avatar.error %}<p class="badge error">{{ comparison.avatar.error }}</p>{% endif %}
+  <div class="form-grid">
+    <div>
+      <h3>First capture · {{ comparison.first.timestamp }}</h3>
+      {% if comparison.avatar.first_source_url %}
+      <img class="profile-avatar" src="/investigations/{{ investigation.id }}/wayback/image?timestamp={{ comparison.first.timestamp }}&source_url={{ comparison.avatar.first_source_url|urlencode }}" alt="Archived profile image from first capture">
+      <p><code>{{ comparison.avatar.first_source_url }}</code></p>
+      <p class="muted">SHA-256: {{ comparison.avatar.first_sha256 or 'Unavailable' }}</p>
+      {% else %}<p class="muted">No likely profile image found.</p>{% endif %}
+    </div>
+    <div>
+      <h3>Latest capture · {{ comparison.latest.timestamp }}</h3>
+      {% if comparison.avatar.latest_source_url %}
+      <img class="profile-avatar" src="/investigations/{{ investigation.id }}/wayback/image?timestamp={{ comparison.latest.timestamp }}&source_url={{ comparison.avatar.latest_source_url|urlencode }}" alt="Archived profile image from latest capture">
+      <p><code>{{ comparison.avatar.latest_source_url }}</code></p>
+      <p class="muted">SHA-256: {{ comparison.avatar.latest_sha256 or 'Unavailable' }}</p>
+      {% else %}<p class="muted">No likely profile image found.</p>{% endif %}
+    </div>
+  </div>
+  {% if comparison.avatar.distance is not none %}<p><strong>Perceptual dHash distance:</strong> {{ comparison.avatar.distance }} / 64</p>{% endif %}
+</section>
+{% endif %}
+<section class="panel">
+  <h2>Page metadata</h2>
+  <div class="table-wrap"><table><thead><tr><th>Field</th><th>First</th><th>Latest</th><th>Changed</th></tr></thead><tbody>
+    <tr><td>Title</td><td>{{ comparison.first.title or '—' }}</td><td>{{ comparison.latest.title or '—' }}</td><td>{{ 'Yes' if comparison.title_changed else 'No' }}</td></tr>
+    <tr><td>Description</td><td>{{ comparison.first.description or '—' }}</td><td>{{ comparison.latest.description or '—' }}</td><td>{{ 'Yes' if comparison.description_changed else 'No' }}</td></tr>
+  </tbody></table></div>
+</section>
+{% for label, added, removed in [
+  ('Email addresses', comparison.added_emails, comparison.removed_emails),
+  ('Links', comparison.added_links, comparison.removed_links),
+  ('Image references', comparison.added_images, comparison.removed_images)
+] %}
+<section class="panel">
+  <h2>{{ label }}</h2>
+  <div class="form-grid">
+    <div><h3>Added</h3>{% if added %}<ul>{% for value in added %}<li><code>{{ value }}</code></li>{% endfor %}</ul>{% else %}<p class="muted">None</p>{% endif %}</div>
+    <div><h3>Removed</h3>{% if removed %}<ul>{% for value in removed %}<li><code>{{ value }}</code></li>{% endfor %}</ul>{% else %}<p class="muted">None</p>{% endif %}</div>
+  </div>
+</section>
+{% endfor %}
+{% endif %}
+{% endblock %}

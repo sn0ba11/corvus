@@ -1,0 +1,16 @@
+{% if historical_url_view.enabled %}
+<section id="historical-urls" class="section-block">
+  <div class="section-title">
+    <div><p class="eyebrow">PASSIVE HISTORY</p><h2>Historical URLs</h2><p class="section-description">{{ historical_url_view.methodology }}</p></div>
+    <span class="badge">{{ historical_url_view.total_url_count }} unique URLs</span>
+  </div>
+  <div class="metric-grid case-metrics">
+    {% for source, count in historical_url_view.source_counts.items() %}<article class="metric-card"><span>{{ source }}</span><strong>{{ count }}</strong><small>unique observed URLs</small></article>{% endfor %}
+  </div>
+  {% if historical_url_view.query_keys %}<div class="notice"><strong>Observed query-parameter keys:</strong> {% for item in historical_url_view.query_keys %}<code>{{ item.key }}</code> ×{{ item.count }}{% if not loop.last %} · {% endif %}{% endfor %}</div>{% endif %}
+  <div class="table-wrap"><table><thead><tr><th>Historical URL</th><th>Sources</th><th>Observation range</th></tr></thead><tbody>
+    {% for item in historical_url_view.urls %}<tr><td><a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.url }}</a><br><small>{{ item.host }} · {{ item.path }}</small></td><td>{% for source in item.sources %}<span class="source">{{ source }}</span>{% endfor %}</td><td>{% if item.first_observed_at %}{{ item.first_observed_at }}{% if item.last_observed_at and item.last_observed_at != item.first_observed_at %}<br>to {{ item.last_observed_at }}{% endif %}{% else %}<span class="muted">Date not supplied by source</span>{% endif %}</td></tr>{% endfor %}
+  </tbody></table></div>
+  {% if historical_url_view.truncated %}<p class="muted">Showing the first 250 unique URLs. The full source records remain in the technical evidence register and raw artifacts.</p>{% endif %}
+</section>
+{% endif %}

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Search workbench · {{ investigation.title }}{% endblock %}
+{% block content %}
+<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Dashboard</a><span>/</span><a href="/investigations/{{ investigation.id }}">{{ investigation.title }}</a><span>/</span><span>Search workbench</span></nav>
+
+<section class="case-header compact-header">
+  <div class="case-heading">
+    <div><p class="eyebrow">ADVANCED SEARCH WORKBENCH</p><h1>Search and dork builder</h1><p class="section-description">Build bounded Google and Bing query packs for <code>{{ investigation.query }}</code>, launch signed searches and import selected results into the evidence register.</p></div>
+    <a class="button" href="/investigations/{{ investigation.id }}">Back to investigation</a>
+  </div>
+</section>
+
+{% if notice %}<section class="notice {{ notice.type or '' }}"><strong>{{ notice.message }}</strong></section>{% endif %}
+{% if error %}<section class="notice error"><strong>{{ error }}</strong></section>{% endif %}
+
+<section class="content-grid search-workbench-grid">
+  <article class="panel">
+    <div class="panel-heading"><div><p class="eyebrow">QUERY PACK</p><h2>Choose search coverage</h2></div><span class="badge">{{ queries|length }} generated</span></div>
+    <form action="/investigations/{{ investigation.id }}/search-queries/generate" method="post" class="search-builder-form">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <fieldset><legend>Search engines</legend><div class="checkbox-grid compact-checks">{% for engine in engines %}<label class="check-card"><input type="checkbox" name="engines" value="{{ engine }}" {% if engine in search_options.engines %}checked{% endif %}><span><strong>{{ engine|title }}</strong></span></label>{% endfor %}</div></fieldset>
+      <div class="grid two"><label>From date<input type="date" name="from_date" value="{{ search_options.from_date.isoformat() if search_options.from_date else '' }}"></label><label>To date<input type="date" name="to_date" value="{{ search_options.to_date.isoformat() if search_options.to_date else '' }}"></label></div>
+      <label class="inline-choice"><input type="checkbox" name="include_core" {% if search_options.include_core %}checked{% endif %}> Include exact-match and identity/domain pivot queries</label>
+      {% if investigation.query_type == 'name' %}
+      <label class="inline-choice"><input type="checkbox" name="include_name_variants" {% if search_options.include_name_variants %}checked{% endif %}> Include deterministic name variants and transliterations</label>
+      <label>Known alternate names or aliases<textarea name="name_aliases" rows="4" maxlength="1500" placeholder="One analyst-confirmed alternate name per line">{{ search_options.name_aliases|join('\n') }}</textarea><small>Initials, name order, surname particles, punctuation and ASCII transliterations are generated locally. Culturally specific nicknames are included only when you enter them here.</small></label>
+      {% endif %}
+
+      <fieldset><legend>Document types</legend><div class="checkbox-grid document-checks">{% for document_type in document_types %}<label class="check-card"><input type="checkbox" name="document_types" value="{{ document_type }}" {% if document_type in search_options.document_types %}checked{% endif %}><span>.{{ document_type }}</span></label>{% endfor %}</div></fieldset>
+
+      <fieldset><legend>Platforms</legend>
+        {% for category, group in search_platforms|groupby('category') %}<div class="selection-group"><h3>{{ category }}</h3><div class="checkbox-grid">{% for platform in group %}<label class="check-card"><input type="checkbox" name="platform_ids" value="{{ platform.id }}" {% if platform.id in search_options.platform_ids %}checked{% endif %}><span>{{ platform.label }}</span></label>{% endfor %}</div></div>{% endfor %}
+      </fieldset>
+
+      {% if saved_templates %}<fieldset><legend>Reusable templates</legend><div class="checkbox-grid">{% for template in saved_templates %}<label class="check-card"><input type="checkbox" name="template_ids" value="{{ template.id }}" {% if template.id in selected_template_ids %}checked{% endif %}><span><strong>{{ template.name }}</strong><small>{{ template.category }}</small></span></label>{% endfor %}</div></fieldset>{% endif %}
+      <button class="primary" type="submit">Generate query pack</button>
+    </form>
+  </article>
+
+  <aside class="panel search-boundary">
+    <p class="eyebrow">BROWSER BOUNDARY</p><h2>System browser</h2>
+    <p>Every launch uses a signed, server-generated query and is recorded in the investigation audit trail.</p>
+    {% if display_name_pivots %}<p><strong>Derived names:</strong> {{ display_name_pivots|map(attribute='value')|join(', ') }}</p><p class="muted">These names are already included in the generated exact-name, name-plus-identifier and selected-platform queries.</p>{% endif %}
+    {% if investigation.query_type == 'name' %}<details class="name-variant-summary" {% if name_variants %}open{% endif %}><summary><strong>Name variants</strong> · {{ name_variants|length }} generated</summary>{% if name_variants %}<ul class="name-variant-list">{% for variant in name_variants %}<li><code>{{ variant.value }}</code><small>{{ variant.label }} — {{ variant.explanation }}</small></li>{% endfor %}</ul>{% else %}<p class="muted">Variant generation is disabled for this query pack.</p>{% endif %}</details><p class="muted">The deterministic approach is based on Bellingcat's MIT-licensed Name Variant Search methodology. No name is sent to Bellingcat or another alias service.</p>{% endif %}
+    <p class="muted">The operating system decides whether the search opens in a normal or private window. The future managed browser connector will replace this target without changing templates or provenance.</p>
+    <dl class="definition-list"><div><dt>Search value</dt><dd>{{ investigation.query }}</dd></div><div><dt>Type</dt><dd>{{ investigation.query_type|title }}</dd></div><div><dt>Engines</dt><dd>{{ search_options.engines|join(', ')|title }}</dd></div><div><dt>Date filter</dt><dd>{% if search_options.from_date or search_options.to_date %}{{ search_options.from_date or 'Any' }} to {{ search_options.to_date or 'Present' }}{% else %}None{% endif %}</dd></div></dl>
+  </aside>
+</section>
+
+<section class="section-block">
+  <div class="section-title"><div><p class="eyebrow">GENERATED QUERIES</p><h2>Launchable searches</h2><p class="section-description">Queries are fixed at generation time. Launch tokens cannot be altered to redirect to another host or substitute another investigation.</p></div></div>
+  {% if queries %}
+    {% for category, group in queries|groupby('item.category') %}
+    <section class="panel query-category"><div class="panel-heading"><h3>{{ category }}</h3><span class="count-label">{{ group|length }}</span></div><div class="query-list">
+      {% for card in group %}{% set item = card.item %}<article class="query-card">
+        <div class="query-card-heading"><div><strong>{{ item.label }}</strong><span class="source">{{ item.engine }}</span></div><small>{{ item.id }}</small></div>
+        <code>{{ item.query }}</code>
+        <form action="/investigations/{{ investigation.id }}/search-queries/launch" method="post" target="_blank">
+          <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="token" value="{{ card.token }}"><button type="submit">Open search</button>
+        </form>
+        <form action="/investigations/{{ investigation.id }}/browser/captures" method="post">
+          <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="url" value="{{ item.url }}"><button type="submit" {% if not managed_browser_enabled %}disabled title="Managed browser support is disabled"{% endif %}>Search with sock browser</button>
+        </form>
+        <form action="/investigations/{{ investigation.id }}/search-queries/searxng" method="post">
+          <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="token" value="{{ card.token }}"><button type="submit">Search via SearXNG</button>
+        </form>
+      </article>{% endfor %}
+    </div></section>
+    {% endfor %}
+  {% else %}<div class="empty-state"><strong>No queries generated</strong><p>Select an engine and at least one core query, platform, document type or reusable template.</p></div>{% endif %}
+</section>
+
+<section id="import-results" class="panel import-panel">
+  <div class="panel-heading"><div><p class="eyebrow">RESULT IMPORT</p><h2>Add selected search results to the case</h2></div><span class="badge likely">Analyst selected</span></div>
+  <p>Paste up to 50 public result URLs. One URL per line is sufficient; tab-separated <code>URL[TAB]Title[TAB]Snippet</code> and JSON arrays are also accepted. Imported pages are stored as likely leads, not verified identity matches.</p>
+  <form action="/investigations/{{ investigation.id }}/search-queries/import" method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Originating query<select name="token" required>{% for card in queries %}{% set item = card.item %}<option value="{{ card.token }}">{{ item.engine|title }} · {{ item.category }} · {{ item.label }}</option>{% endfor %}</select></label>
+    <label>Search results<textarea name="results" rows="10" maxlength="65536" required placeholder="https://example.org/profile&#9;Example profile&#9;Optional search-result snippet"></textarea></label>
+    <button class="primary" type="submit" {% if not queries %}disabled{% endif %}>Import and deduplicate</button>
+    <small>Private/local URLs and credential-bearing URLs are rejected. Existing canonical URLs receive additional provenance instead of a duplicate finding.</small>
+  </form>
+</section>
+
+<section id="templates" class="section-block">
+  <div class="section-title"><div><p class="eyebrow">REUSABLE DORKS</p><h2>Saved query templates</h2><p class="section-description">Templates are stored locally and can be reused across investigations. Allowed placeholders are shown below.</p></div></div>
+  <article class="panel template-help"><code>{value}</code><code>{quoted}</code><code>{local}</code><code>{domain}</code><code>{platforms}</code><code>{filetypes}</code><code>{after}</code><code>{before}</code><code>{date_range}</code></article>
+  <div class="content-grid">
+    <article class="panel"><h3>Create template</h3><form action="/investigations/{{ investigation.id }}/search-queries/templates" method="post" class="details-form">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><div class="grid two"><label>Name<input name="name" maxlength="120" required placeholder="Public profile documents"></label><label>Category<input name="category" maxlength="100" value="Custom"></label></div>
+      <label>Query template<textarea name="query_template" rows="4" maxlength="1200" required placeholder='{quoted} {platforms} {filetypes} {date_range}'></textarea></label>
+      <fieldset><legend>Engines</legend><div class="inline-options">{% for engine in engines %}<label class="inline-choice"><input type="checkbox" name="engines" value="{{ engine }}" checked> {{ engine|title }}</label>{% endfor %}</div></fieldset>
+      <fieldset><legend>Query types</legend><div class="inline-options">{% for query_type in query_types %}<label class="inline-choice"><input type="checkbox" name="query_types" value="{{ query_type.value }}" checked> {{ query_type.value|title }}</label>{% endfor %}</div></fieldset>
+      <button type="submit">Save template</button>
+    </form></article>
+
+    <div class="template-list">{% for template in saved_templates %}<details class="panel template-card"><summary><span><strong>{{ template.name }}</strong><small>{{ template.category }} · {{ template.engines|join(', ') }}</small></span><span class="badge">Edit</span></summary>
+      <form action="/investigations/{{ investigation.id }}/search-queries/templates/{{ template.id }}" method="post" class="details-form"><input type="hidden" name="csrf" value="{{ csrf }}"><div class="grid two"><label>Name<input name="name" maxlength="120" required value="{{ template.name }}"></label><label>Category<input name="category" maxlength="100" value="{{ template.category }}"></label></div><label>Query template<textarea name="query_template" rows="4" maxlength="1200" required>{{ template.query_template }}</textarea></label><fieldset><legend>Engines</legend><div class="inline-options">{% for engine in engines %}<label class="inline-choice"><input type="checkbox" name="engines" value="{{ engine }}" {% if engine in template.engines %}checked{% endif %}> {{ engine|title }}</label>{% endfor %}</div></fieldset><fieldset><legend>Query types</legend><div class="inline-options">{% for query_type in query_types %}<label class="inline-choice"><input type="checkbox" name="query_types" value="{{ query_type.value }}" {% if query_type.value in template.query_types %}checked{% endif %}> {{ query_type.value|title }}</label>{% endfor %}</div></fieldset><button type="submit">Update template</button></form>
+      <form action="/investigations/{{ investigation.id }}/search-queries/templates/{{ template.id }}/delete" method="post" class="delete-template-form"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="danger" type="submit">Delete template</button></form>
+    </details>{% else %}<div class="empty-state"><strong>No saved templates</strong><p>Create a reusable dork for future investigations.</p></div>{% endfor %}</div>
+  </div>
+</section>
+{% endblock %}

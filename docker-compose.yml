@@ -1,0 +1,241 @@
+name: corvus
+x-tool-common: &tool-common
+  restart: unless-stopped
+  read_only: true
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: ["ALL"]
+  tmpfs: ["/output:rw,noexec,nosuid,size=64m,uid=10001,gid=10001", "/tmp:rw,noexec,nosuid,size=32m,uid=10001,gid=10001"]
+  mem_limit: 512m
+  cpus: 1.0
+  networks: [backend, egress]
+
+services:
+  app:
+    image: corvus-app:latest
+    build: .
+    restart: unless-stopped
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=32m,uid=10001,gid=10001"]
+    env_file: [.env]
+    environment:
+      OSINT_DATABASE_URL: ${OSINT_DATABASE_URL:-sqlite:////data/osint.db}
+      OSINT_DATA_DIR: ${OSINT_DATA_DIR:-/data}
+      OSINT_RUNNER_MAIGRET_URL: http://maigret:8080
+      OSINT_RUNNER_SHERLOCK_URL: http://sherlock:8080
+      OSINT_RUNNER_BLACKBIRD_URL: ${OSINT_RUNNER_BLACKBIRD_URL:-http://blackbird:8080}
+      OSINT_RUNNER_NAMINTER_URL: http://naminter:8080
+      OSINT_RUNNER_HOLEHE_URL: http://holehe:8080
+      OSINT_RUNNER_THEHARVESTER_URL: http://theharvester:8080
+      OSINT_RUNNER_SUBFINDER_URL: http://subfinder:8080
+      OSINT_RUNNER_INSTALOADER_URL: http://instaloader:8080
+      OSINT_RUNNER_GALLERY_DL_URL: http://gallery-dl:8080
+      OSINT_RUNNER_YT_DLP_METADATA_URL: http://yt-dlp:8080
+      OSINT_RUNNER_NEXFIL_URL: http://nexfil:8080
+      OSINT_RUNNER_SOCIAL_ANALYZER_URL: http://social_analyzer:8080
+      OSINT_SEARXNG_URL: http://searxng:8080
+      OSINT_METASEARCH2_URL: http://metasearch2:28019
+      OSINT_TOR_PROXY: socks5h://tor:9050
+      OSINT_BROWSER_ENABLED: "true"
+      OSINT_BROWSER_AGENT_URL: http://browser-agent:8080
+      OSINT_BROWSER_AGENT_TOKEN: ${OSINT_BROWSER_AGENT_TOKEN:-}
+      OSINT_BROWSER_SHARE_SESSIONS: ${OSINT_BROWSER_SHARE_SESSIONS:-false}
+      OSINT_BROWSER_DESKTOP_URL: ${OSINT_BROWSER_DESKTOP_URL:-http://127.0.0.1:6080/vnc.html?autoconnect=true&resize=scale}
+      OSINT_BROWSER_ALLOWED_HOSTS: ${OSINT_BROWSER_ALLOWED_HOSTS:-google.com,google.ie,bing.com,mojeek.com,duckduckgo.com,brave.com,qwant.com,startpage.com,tripadvisor.com,tripadvisor.ie,tripadvisor.co.uk,strava.com,alltrails.com,komoot.com,garmin.com,instagram.com,facebook.com,facebook.net,fb.com,fbcdn.net,fbsbx.com,messenger.com,meta.com,linkedin.com,x.com,twitter.com,tiktok.com,snapchat.com,t.me,telegram.org,discord.com,discord.gg,whatsapp.com,wa.me,reddit.com,github.com,gitlab.com}
+      OSINT_BROWSER_MAIGRET_SESSION_HOSTS: ${OSINT_BROWSER_MAIGRET_SESSION_HOSTS:-instagram.com,facebook.com,linkedin.com,x.com,twitter.com,tiktok.com,reddit.com,github.com,gitlab.com}
+      OSINT_BROWSER_REQUEST_TIMEOUT_SECONDS: ${OSINT_BROWSER_REQUEST_TIMEOUT_SECONDS:-45}
+      OSINT_BUILD_COMMIT: ${OSINT_BUILD_COMMIT:-}
+      OSINT_BROWSER_EVIDENCE_DIR: /browser-evidence
+      OSINT_LOCAL_AUTH_ENABLED: ${OSINT_LOCAL_AUTH_ENABLED:-false}
+      OSINT_LOCAL_AUTH_USERNAME: ${OSINT_LOCAL_AUTH_USERNAME:-investigator}
+      OSINT_LOCAL_AUTH_PASSWORD_HASH: ${OSINT_LOCAL_AUTH_PASSWORD_HASH:-}
+    volumes:
+      - workbench-data:/data
+      - browser-evidence:/browser-evidence:ro
+      - ./runtime:/runtime:ro
+    ports: ["${OSINT_BIND_HOST:-127.0.0.1}:${OSINT_PORT:-8000}:8000"]
+    depends_on:
+      maigret: {condition: service_healthy}
+      sherlock: {condition: service_healthy}
+      naminter: {condition: service_healthy}
+      holehe: {condition: service_healthy}
+      theharvester: {condition: service_healthy}
+      subfinder: {condition: service_healthy}
+      instaloader: {condition: service_healthy}
+      gallery-dl: {condition: service_healthy}
+      yt-dlp: {condition: service_healthy}
+      nexfil: {condition: service_healthy}
+      social_analyzer: {condition: service_healthy}
+      searxng: {condition: service_healthy}
+      metasearch2: {condition: service_started}
+      browser-agent: {condition: service_healthy}
+      tor: {condition: service_started}
+    mem_limit: 512m
+    cpus: 1.0
+    networks: [frontend, backend, browser-control]
+  tor:
+    image: corvus-tor:latest
+    build: {context: ., dockerfile: torproxy/Dockerfile}
+    restart: unless-stopped
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    tmpfs: ["/var/lib/tor:rw,noexec,nosuid,size=32m,uid=10002,gid=10002", "/tmp:rw,noexec,nosuid,size=16m,uid=10002,gid=10002"]
+    mem_limit: 256m
+    cpus: 0.5
+    networks: [backend, egress]
+  searxng:
+    image: corvus-searxng:latest
+    build: {context: ., dockerfile: searxng/Dockerfile}
+    restart: unless-stopped
+    user: "977:977"
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    environment:
+      FORCE_OWNERSHIP: "false"
+      SEARXNG_SECRET: ${OSINT_SEARXNG_SECRET:?Set OSINT_SEARXNG_SECRET in .env}
+      SEARXNG_BASE_URL: http://searxng:8080/
+      SEARXNG_LIMITER: "false"
+      SEARXNG_PUBLIC_INSTANCE: "false"
+    tmpfs:
+      - /etc/searxng:rw,noexec,nosuid,size=4m,uid=977,gid=977
+      - /tmp:rw,noexec,nosuid,size=32m,uid=977,gid=977
+      - /var/cache/searxng:rw,noexec,nosuid,size=64m,uid=977,gid=977
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --header='X-Forwarded-For: 127.0.0.1' -O /dev/null http://127.0.0.1:8080/config"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    mem_limit: 512m
+    cpus: 1.0
+    networks: [backend, egress]
+  metasearch2:
+    image: corvus-metasearch2:latest
+    build:
+      context: .
+      dockerfile: metasearch2/Dockerfile
+      args:
+        METASEARCH2_REPO: "https://github.com/mat-1/metasearch2.git"
+        METASEARCH2_COMMIT: "33c0b4b330e2f0cb13161a80cd80bed9f2c3008e"
+    restart: unless-stopped
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=16m,uid=65532,gid=65532"]
+    mem_limit: 256m
+    cpus: 0.75
+    networks: [backend, egress]
+  browser-agent:
+    image: corvus-browser-agent:latest
+    build: {context: ., dockerfile: browser_agent/Dockerfile}
+    restart: unless-stopped
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    tmpfs: ["/tmp:rw,nosuid,size=64m,uid=10001,gid=10001"]
+    environment:
+      BROWSER_AGENT_TOKEN: ${OSINT_BROWSER_AGENT_TOKEN:-}
+      BROWSER_ALLOWED_HOSTS: ${OSINT_BROWSER_ALLOWED_HOSTS:-google.com,google.ie,bing.com,mojeek.com,duckduckgo.com,brave.com,qwant.com,startpage.com,tripadvisor.com,tripadvisor.ie,tripadvisor.co.uk,strava.com,alltrails.com,komoot.com,garmin.com,instagram.com,facebook.com,facebook.net,fb.com,fbcdn.net,fbsbx.com,messenger.com,meta.com,linkedin.com,x.com,twitter.com,tiktok.com,snapchat.com,t.me,telegram.org,discord.com,discord.gg,whatsapp.com,wa.me,reddit.com,github.com,gitlab.com}
+      BROWSER_MAIGRET_SESSION_HOSTS: ${OSINT_BROWSER_MAIGRET_SESSION_HOSTS:-instagram.com,facebook.com,linkedin.com,x.com,twitter.com,tiktok.com,reddit.com,github.com,gitlab.com}
+      BROWSER_MAX_HTML_BYTES: ${OSINT_BROWSER_MAX_HTML_BYTES:-1048576}
+      BROWSER_NAVIGATION_TIMEOUT_MS: ${OSINT_BROWSER_NAVIGATION_TIMEOUT_MS:-30000}
+      BROWSER_LOCALE: ${OSINT_BROWSER_LOCALE:-en-IE}
+      STEALTH_BROWSER_ENABLED: ${OSINT_STEALTH_BROWSER_ENABLED:-false}
+    volumes:
+      - browser-profile:/profile
+      - browser-evidence:/evidence
+    ports: ["127.0.0.1:${OSINT_BROWSER_DESKTOP_PORT:-6080}:6080"]
+    shm_size: 1gb
+    mem_limit: 2g
+    cpus: 2.0
+    networks: [browser-control, browser-egress]
+  maigret:
+    <<: *tool-common
+    image: corvus-maigret:latest
+    build: {context: ., dockerfile: tool_containers/Dockerfile, args: {TOOL_ID: maigret, UPSTREAM_REPO: "https://github.com/soxoj/maigret.git", UPSTREAM_COMMIT: ba59c7e2a1828c963ff62f7f1ab4d7e35d95ec1e}}
+  sherlock:
+    <<: *tool-common
+    image: corvus-sherlock:latest
+    build: {context: ., dockerfile: tool_containers/Dockerfile, args: {TOOL_ID: sherlock, UPSTREAM_REPO: "https://github.com/sherlock-project/sherlock.git", UPSTREAM_COMMIT: a38ba54fda799cd786a2ab67a50143e1a63169e6}}
+  blackbird:
+    profiles: [blackbird]
+    <<: *tool-common
+    image: corvus-blackbird:latest
+    build: {context: ., dockerfile: tool_containers/Dockerfile, args: {TOOL_ID: blackbird, UPSTREAM_REPO: "https://github.com/p1ngul1n0/blackbird.git", UPSTREAM_COMMIT: b45505080ef51bb3ef52dc29879ee6bef31e5b94, WMN_REPO: "https://github.com/WebBreacher/WhatsMyName.git", WMN_COMMIT: 7c445952f2c40689da8b5f677a591ff341f4a8db}}
+  naminter:
+    <<: *tool-common
+    image: corvus-naminter:latest
+    build: {context: ., dockerfile: tool_containers/Dockerfile, args: {TOOL_ID: naminter, UPSTREAM_REPO: "https://github.com/3xp0rt/Naminter.git", UPSTREAM_COMMIT: 0cd7c9389dd6d1fbbd949b28005f7b334ca85bb9, WMN_REPO: "https://github.com/WebBreacher/WhatsMyName.git", WMN_COMMIT: 7c445952f2c40689da8b5f677a591ff341f4a8db}}
+  holehe:
+    <<: *tool-common
+    image: corvus-holehe:latest
+    build: {context: ., dockerfile: tool_containers/Dockerfile, args: {TOOL_ID: holehe, UPSTREAM_REPO: "https://github.com/megadose/holehe.git", UPSTREAM_COMMIT: 14da70f588538936b20d238783c5e28a0772a2b3}}
+    mem_limit: 384m
+    cpus: 0.75
+  theharvester:
+    <<: *tool-common
+    image: corvus-theharvester:latest
+    build: {context: ., dockerfile: tool_containers/Dockerfile, args: {TOOL_ID: theharvester, UPSTREAM_REPO: "https://github.com/laramies/theHarvester.git", UPSTREAM_COMMIT: c79293c888ca8eebd275884d1c0afa8e4a1ad134}}
+    mem_limit: 768m
+  subfinder:
+    <<: *tool-common
+    image: corvus-subfinder:latest
+    build: {context: ., dockerfile: tool_containers/Dockerfile.subfinder, args: {TOOL_ID: subfinder, UPSTREAM_REPO: "https://github.com/projectdiscovery/subfinder.git", UPSTREAM_COMMIT: 0ed1b0b622fd94ac96877af3a7082117fca60772}}
+    mem_limit: 384m
+    cpus: 0.75
+  instaloader:
+    <<: *tool-common
+    image: corvus-instaloader:latest
+    build: {context: ., dockerfile: tool_containers/Dockerfile, args: {TOOL_ID: instaloader, UPSTREAM_REPO: "https://github.com/instaloader/instaloader.git", UPSTREAM_COMMIT: 3338260f5d956e8b0da862c8b535f667ae791841}}
+    environment:
+      INSTALOADER_SESSION_USERNAME: ${OSINT_INSTALOADER_SESSION_USERNAME:-}
+    volumes:
+      - ./sessions/instaloader:/sessions:ro
+    mem_limit: 384m
+    cpus: 0.75
+  gallery-dl:
+    <<: *tool-common
+    image: corvus-gallery-dl:latest
+    build: {context: ., dockerfile: tool_containers/Dockerfile, args: {TOOL_ID: gallery_dl, UPSTREAM_REPO: "https://github.com/mikf/gallery-dl.git", UPSTREAM_COMMIT: 26dfd4eea885577fef45e9b614538e5a7d24583a}}
+    mem_limit: 384m
+    cpus: 0.75
+  yt-dlp:
+    <<: *tool-common
+    image: corvus-yt-dlp:latest
+    build: {context: ., dockerfile: tool_containers/Dockerfile, args: {TOOL_ID: yt_dlp_metadata, UPSTREAM_REPO: "https://github.com/yt-dlp/yt-dlp.git", UPSTREAM_COMMIT: f264a6cbd1f630894da0f368df00f8aae50140e0}}
+    mem_limit: 384m
+    cpus: 0.75
+  nexfil:
+    <<: *tool-common
+    image: corvus-nexfil:latest
+    build: {context: ., dockerfile: tool_containers/Dockerfile, args: {TOOL_ID: nexfil, UPSTREAM_REPO: "https://github.com/thewhiteh4t/nexfil.git", UPSTREAM_COMMIT: c540238dd510b865daac1eb59a328f8fa68b1ce5}}
+    mem_limit: 384m
+    cpus: 0.75
+  social_analyzer:
+    <<: *tool-common
+    image: corvus-social-analyzer:latest
+    build: {context: ., dockerfile: tool_containers/Dockerfile, args: {TOOL_ID: social_analyzer, UPSTREAM_REPO: "https://github.com/qeeqbox/social-analyzer.git", UPSTREAM_COMMIT: 1ba0905e00d054aab833eb3693739c354db09e0f}}
+    mem_limit: 768m
+    cpus: 1.0
+
+volumes:
+  workbench-data:
+    external: true
+    name: osint-workbench_workbench-data
+  browser-profile:
+    external: true
+    name: osint-workbench_browser-profile
+  browser-evidence:
+    external: true
+    name: osint-workbench_browser-evidence
+networks:
+  frontend: {}
+  backend:
+    internal: true
+  egress: {}
+  browser-egress: {}
+  browser-control:
+    internal: true

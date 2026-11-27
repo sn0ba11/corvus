@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Corvus Update{% endblock %}
+{% block content %}
+<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Dashboard</a><span>/</span><span>Corvus Update</span></nav>
+<section class="panel settings-hero update-hero">
+  <div>
+    <p class="eyebrow">HOST UPDATE</p>
+    <h1>Corvus Update</h1>
+    <p>The updater must run on the host operating system because it rebuilds the Docker stack. The browser application cannot invoke Docker Desktop directly.</p>
+  </div>
+  <a class="button" href="/">Back to dashboard</a>
+</section>
+<section class="content-grid update-launch-grid">
+  <article class="panel">
+    <p class="eyebrow">WINDOWS</p>
+    <h2>Run the registered updater</h2>
+    <p>The Windows installer registers a local one-click update handler. Use it as the normal update path; it opens the Corvus updater window with live progress/log output, checks for a clean fast-forward and rebuilds only when required.</p>
+    <a class="button primary prominent-action" href="corvus-update://run" title="Open the installed Corvus Update window through the registered corvus-update:// handler">Run Corvus Update</a>
+    <div class="update-launcher-actions"><a class="button" href="/maintenance/update-launcher/windows" download title="Recovery fallback: download a command file that starts the installed updater when the one-click handler is missing">Download repair launcher</a></div>
+    <p class="muted">The downloaded command file is a recovery fallback only for older or damaged installations where Windows protocol registration is missing. Both paths use the same installed updater and preserve case volumes.</p>
+  </article>
+  <article class="panel">
+    <p class="eyebrow">MACOS</p>
+    <h2>Download the macOS launcher</h2>
+    <p>macOS uses a reviewable `.command` launcher because a browser cannot directly invoke the host-side Docker updater.</p>
+    <div class="update-launcher-actions">
+      <a class="button primary" href="/maintenance/update-launcher/macos" download title="Download a reviewable .command script that starts the updater already installed on this Mac">Download macOS update launcher</a>
+    </div>
+    <p class="muted">Review the downloaded text script before running it. It only locates and starts the updater already installed on this machine.</p>
+  </article>
+</section>
+{% include "_update_changelog.html" %}
+{% endblock %}

@@ -1,0 +1,17 @@
+.git
+.env
+.install-state.json
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.macos-runtime
+data
+reports
+tool_output
+tests
+docs
+!docs/
+!docs/MANUAL.md

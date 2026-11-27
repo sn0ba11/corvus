@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Location intelligence · {{ investigation.title }}{% endblock %}
+{% block content %}
+<div class="section-title">
+  <div>
+    <p class="eyebrow">LOCATION INTELLIGENCE</p>
+    <h1>Location observations</h1>
+    <p class="muted">{{ investigation.title }} · {{ investigation.query }}</p>
+  </div>
+  <a href="/investigations/{{ investigation.id }}">Back to investigation</a>
+</div>
+<section class="panel">
+  <h2>Interpretation boundary</h2>
+  <p>A declared location, review, photograph, event or public fitness activity is an observation—not proof of residence or physical presence. Repetition, independent platforms and dated corroboration increase its analytical value.</p>
+</section>
+<section class="panel">
+  <div class="section-title"><h2>Location summary</h2><span class="badge">{{ clusters|length }} places</span></div>
+  {% if clusters %}
+  <div class="table-wrap"><table><thead><tr><th>Place</th><th>Assessment</th><th>Observations</th><th>Sources</th><th>Evidence</th><th>Date range</th></tr></thead><tbody>
+  {% for cluster in clusters %}<tr>
+    <td><strong>{{ cluster.place_name }}</strong>{% if cluster.locality or cluster.region or cluster.country %}<br><small>{{ [cluster.locality, cluster.region, cluster.country]|select|join(', ') }}</small>{% endif %}</td>
+    <td><span class="badge {{ 'likely' if cluster.classification in ['corroborated', 'recurring'] else '' }}">{{ cluster.classification|replace('_', ' ') }}</span><br><small>Maximum source confidence {{ (cluster.maximum_confidence * 100)|round|int }}%</small></td>
+    <td>{{ cluster.observation_count }}{% if cluster.privacy_masked_count %}<br><small>{{ cluster.privacy_masked_count }} privacy-masked</small>{% endif %}</td>
+    <td>{% for platform in cluster.source_platforms %}<span class="source">{{ platform }}</span>{% endfor %}</td>
+    <td>{% for evidence_type in cluster.evidence_types %}<span class="source">{{ evidence_type|replace('_', ' ') }}</span>{% endfor %}</td>
+    <td>{% if cluster.earliest_occurred_at %}{{ cluster.earliest_occurred_at.strftime('%Y-%m-%d') }}{% if cluster.latest_occurred_at and cluster.latest_occurred_at != cluster.earliest_occurred_at %} – {{ cluster.latest_occurred_at.strftime('%Y-%m-%d') }}{% endif %}{% else %}<span class="muted">Observed {{ cluster.first_observed_at.strftime('%Y-%m-%d') }}</span>{% endif %}</td>
+  </tr>{% endfor %}
+  </tbody></table></div>
+  {% else %}<p class="empty">No location observations have been recorded.</p>{% endif %}
+</section>
+<section class="panel">
+  <h2>Collect structured public evidence</h2>
+  <p class="muted">Fetches public HTML only from supported review and fitness platforms and imports structured schema.org or geo metadata. It does not infer a place from arbitrary page text, bypass authentication, follow redirects or defeat privacy zones.</p>
+  {% if collection_error %}<p class="badge error">{{ collection_error }}</p>{% endif %}
+  {% if collection_result %}<p><span class="badge completed">Collection complete</span> {{ collection_result.observations_processed }} observations processed from {{ collection_result.pages_succeeded }} of {{ collection_result.targets }} pages{% if collection_result.pages_failed %}; {{ collection_result.pages_failed }} failed{% endif %}. Robots policy: {{ collection_result.robots_policy }}.</p>{% endif %}
+  <form action="/investigations/{{ investigation.id }}/locations/collect" method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Public review or fitness page URL
+      <input name="source_url" type="url" maxlength="2048" list="location-collection-candidates" placeholder="https://www.strava.com/activities/...">
+    </label>
+    <datalist id="location-collection-candidates">{% for candidate in collection_candidates %}<option value="{{ candidate }}">{% endfor %}</datalist>
+    <label class="inline-choice"><input type="checkbox" name="respect_robots" checked> Respect robots.txt</label>
+    <button type="submit">Collect this page</button>
+    <small>Supported hosts: Google Maps, Tripadvisor, Yelp, Strava, AllTrails, Komoot and Garmin Connect.</small>
+  </form>
+  {% if collection_candidates %}
+  <form action="/investigations/{{ investigation.id }}/locations/collect" method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label class="inline-choice"><input type="checkbox" name="respect_robots" checked> Respect robots.txt</label>
+    <button type="submit">Collect {{ collection_candidates|length }} supported finding page{% if collection_candidates|length != 1 %}s{% endif %}</button>
+    <small>Processes at most 25 existing found/likely profile URLs and records per-page failures in the audit trail.</small>
+  </form>
+  {% endif %}
+</section>
+<section class="panel">
+  <h2>Add public location evidence</h2>
+  <p class="muted">Use this for a public review, fitness activity, event, photograph or textual mention. Existing profile-declared locations are added automatically.</p>
+  <form action="/investigations/{{ investigation.id }}/locations" method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="grid two">
+      <label>Place or venue<input name="place_name" maxlength="300" required placeholder="Phoenix Park"></label>
+      <label>Evidence type<select name="evidence_type" required>{% for evidence_type in evidence_types %}<option value="{{ evidence_type.value }}">{{ evidence_type.value|replace('_', ' ')|title }}</option>{% endfor %}</select></label>
+      <label>Source platform<input name="source_platform" maxlength="100" required placeholder="Strava, Google Maps, Tripadvisor"></label>
+      <label>Public source URL<input name="source_url" type="url" maxlength="2048" placeholder="https://..."></label>
+      <label>Occurred / claimed visit date<input name="occurred_at" type="datetime-local"></label>
+      <label>Published date<input name="published_at" type="datetime-local"></label>
+      <label>Locality<input name="locality" maxlength="200" placeholder="Dublin"></label>
+      <label>Region<input name="region" maxlength="200" placeholder="County Dublin"></label>
+      <label>Country<input name="country" maxlength="100" placeholder="Ireland"></label>
+      <label>Account identifier<input name="account_identifier" maxlength="320" placeholder="username or account ID"></label>
+      <label>Latitude<input name="latitude" type="number" step="any" min="-90" max="90"></label>
+      <label>Longitude<input name="longitude" type="number" step="any" min="-180" max="180"></label>
+      <label>Precision radius (metres)<input name="precision_radius_m" type="number" min="0" max="1000000"></label>
+      <label>Confidence override (0–1)<input name="confidence" type="number" step="0.01" min="0" max="1" placeholder="Uses evidence-type default"></label>
+    </div>
+    <label class="inline-choice"><input type="checkbox" name="privacy_masked"> Source platform hides or approximates the precise location</label>
+    <label>Analyst note<textarea name="analyst_note" maxlength="2000" rows="3"></textarea></label>
+    <button type="submit">Add observation</button>
+  </form>
+</section>
+<section>
+  <div class="section-title"><h2>Evidence register</h2><span class="badge">{{ observations|length }} observations</span></div>
+  {% if observations %}
+  <div class="table-wrap"><table><thead><tr><th>Place</th><th>Type</th><th>Source</th><th>Occurred</th><th>Published</th><th>Observed</th><th>Precision</th><th>Confidence</th></tr></thead><tbody>
+  {% for observation in observations %}<tr>
+    <td><strong>{{ observation.place_name }}</strong>{% if observation.locality or observation.region or observation.country %}<br><small>{{ [observation.locality, observation.region, observation.country]|select|join(', ') }}</small>{% endif %}{% if observation.latitude is not none and observation.longitude is not none %}<br><code>{{ observation.latitude }}, {{ observation.longitude }}</code>{% endif %}</td>
+    <td>{{ observation.evidence_type|replace('_', ' ') }}{% if observation.privacy_masked %}<br><span class="badge likely">privacy masked</span>{% endif %}</td>
+    <td>{{ observation.source_platform }}{% if observation.source_url %}<br><a href="{{ observation.source_url }}" rel="noopener noreferrer" target="_blank">Open source</a>{% endif %}{% if observation.account_identifier %}<br><small>{{ observation.account_identifier }}</small>{% endif %}</td>
+    <td>{{ observation.occurred_at.strftime('%Y-%m-%d %H:%M UTC') if observation.occurred_at else '—' }}</td>
+    <td>{{ observation.published_at.strftime('%Y-%m-%d %H:%M UTC') if observation.published_at else '—' }}</td>
+    <td>{{ observation.first_observed_at.strftime('%Y-%m-%d %H:%M UTC') }}</td>
+    <td>{{ observation.precision_radius_m|string + ' m' if observation.precision_radius_m is not none else 'Unspecified' }}</td>
+    <td>{{ (observation.confidence * 100)|round|int }}%</td>
+  </tr>{% endfor %}
+  </tbody></table></div>
+  {% else %}<p class="empty">No location evidence has been recorded.</p>{% endif %}
+</section>
+{% endblock %}

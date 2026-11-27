@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Wayback discovery · {{ investigation.title }}{% endblock %}
+{% block content %}
+<div class="section-title">
+  <div>
+    <p class="eyebrow">ARCHIVE DISCOVERY</p>
+    <h1>Wayback Machine</h1>
+    <p class="muted">{{ investigation.title }} · {{ investigation.query }}</p>
+  </div>
+  <a href="/investigations/{{ investigation.id }}">Back to investigation</a>
+</div>
+{% if automatic_results %}
+<section class="panel">
+  <div class="panel-heading"><div><p class="eyebrow">AUTOMATIC DISCOVERY</p><h2>Archived profile coverage</h2><p class="muted">The normal investigation workflow already queried CDX for these public profile URLs. Use the controls below only for deeper comparison, date filtering or another target.</p></div><span class="badge">{{ automatic_results|length }} checked</span></div>
+  <div class="table-wrap"><table><thead><tr><th>Platform</th><th>Profile</th><th>Captures</th><th>First</th><th>Latest</th><th>Status</th></tr></thead><tbody>
+    {% for result in automatic_results %}{% set finding = result.finding %}{% set metadata = result.metadata %}<tr>
+      <td>{{ finding.platform or 'Uncategorised' }}</td>
+      <td><a href="{{ finding.canonical_url }}" rel="noopener noreferrer" target="_blank">{{ finding.value or finding.canonical_url }}</a></td>
+      <td>{{ metadata.get('capture_count', 0) }}</td>
+      <td>{% if metadata.get('first_capture') %}<a href="{{ metadata.get('first_capture').get('archive_url') }}" rel="noopener noreferrer" target="_blank">{{ metadata.get('first_capture').get('captured_at', '')[:10] }}</a>{% else %}—{% endif %}</td>
+      <td>{% if metadata.get('latest_capture') %}<a href="{{ metadata.get('latest_capture').get('archive_url') }}" rel="noopener noreferrer" target="_blank">{{ metadata.get('latest_capture').get('captured_at', '')[:10] }}</a>{% else %}—{% endif %}</td>
+      <td>{% if metadata.get('error') %}<span class="badge error">lookup failed</span>{% elif metadata.get('capture_count', 0) %}<span class="badge completed">archived</span>{% else %}<span class="badge unknown">no captures</span>{% endif %}</td>
+    </tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% endif %}
+<section class="panel">
+  <h2>Save Page Now</h2>
+  <p class="muted">Explicitly asks the Internet Archive to create a public snapshot of one public HTTP(S) page. This is a third-party publication action and the resulting capture may not be removable.</p>
+  {% if save_error %}<p class="badge error">{{ save_error }}</p>{% endif %}
+  {% if save_result %}
+    <p><span class="badge completed">{{ save_result.message }}</span> Submitted {{ save_result.submitted_at.strftime('%Y-%m-%d %H:%M:%S UTC') }} with status {{ save_result.status_code }}.</p>
+    {% if save_result.archive_url %}<p><a href="{{ save_result.archive_url }}" rel="noopener noreferrer" target="_blank">Open saved capture</a></p>{% endif %}
+    {% if save_result.job_id %}<p class="muted">Archive job: <code>{{ save_result.job_id }}</code></p>{% endif %}
+  {% endif %}
+  <form action="/investigations/{{ investigation.id }}/wayback/save" method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Public page URL
+      <input name="target" value="{{ target if '://' in target else '' }}" maxlength="2048" required list="save-page-candidates" placeholder="https://example.org/profile">
+    </label>
+    <datalist id="save-page-candidates">
+      {% for candidate in candidates %}<option value="{{ candidate }}">{% endfor %}
+    </datalist>
+    <button type="submit">Submit public capture</button>
+  </form>
+</section>
+<section class="panel">
+  <h2>Discover archived captures</h2>
+  <p class="muted">Queries CDX metadata only. Duplicate content is collapsed by archive digest and results are capped at 200 distinct captures.</p>
+  {% if error %}<p class="badge error">{{ error }}</p>{% endif %}
+  <form action="/investigations/{{ investigation.id }}/wayback" method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Domain or public HTTP(S) URL
+      <input name="target" value="{{ target }}" maxlength="2048" required list="wayback-candidates" placeholder="example.org or https://example.org/profile">
+    </label>
+    <datalist id="wayback-candidates">
+      {% for candidate in candidates %}<option value="{{ candidate }}">{% endfor %}
+    </datalist>
+    <div class="form-grid">
+      <label>From year<input type="number" name="from_year" min="1996" max="2100" placeholder="1996"></label>
+      <label>To year<input type="number" name="to_year" min="1996" max="2100" placeholder="Current"></label>
+    </div>
+    <label class="inline-choice"><input type="checkbox" name="wildcard_domain"> Include all archived paths under a bare domain</label><label class="inline-choice"><input type="checkbox" name="prefix_target"> Treat an HTTP(S) URL as a prefix and include archived descendants</label>
+    <button type="submit">Discover captures</button>
+  </form>
+</section>
+{% if captures %}
+<section class="panel">
+  <h2>Compare archived pages</h2>
+  <p class="muted">Fetches only the earliest and latest distinct HTML capture for the selected URL, with a 1 MiB limit per page. The comparison extracts titles, descriptions, email addresses, links and image references; it does not execute archived scripts.</p>
+  {% for group in captures|groupby('original_url') %}
+    {% if group.list|length > 1 %}
+    <div class="actions">
+      <form action="/investigations/{{ investigation.id }}/wayback/compare" method="post">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="hidden" name="original_url" value="{{ group.grouper }}">
+        <input type="hidden" name="first_timestamp" value="{{ group.list[0].timestamp }}">
+        <input type="hidden" name="latest_timestamp" value="{{ group.list[-1].timestamp }}">
+        <button type="submit">Compare first/latest</button>
+      </form>
+      <form action="/investigations/{{ investigation.id }}/wayback/evolution" method="post">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="hidden" name="original_url" value="{{ group.grouper }}">
+        {% for capture in group.list %}<input type="hidden" name="timestamp" value="{{ capture.timestamp }}">{% endfor %}
+        <button type="submit">Build identity evolution</button>
+      </form>
+      <small>{{ group.grouper }}</small>
+    </div>
+    {% endif %}
+  {% endfor %}
+</section>
+<section>
+  <div class="section-title"><h2>{{ captures|length }} distinct captures</h2><p class="muted">Earliest {{ captures[0].captured_at.strftime('%Y-%m-%d') if captures[0].captured_at else captures[0].timestamp }} · Latest {{ captures[-1].captured_at.strftime('%Y-%m-%d') if captures[-1].captured_at else captures[-1].timestamp }}</p></div>
+  <div class="table-wrap"><table><thead><tr><th>Captured</th><th>Original URL</th><th>Type</th><th>Bytes</th><th>Digest</th><th>Archive</th></tr></thead><tbody>
+  {% for capture in captures %}<tr>
+    <td>{{ capture.captured_at.strftime('%Y-%m-%d %H:%M:%S UTC') if capture.captured_at else capture.timestamp }}</td>
+    <td><a href="{{ capture.original_url }}" rel="noopener noreferrer" target="_blank">{{ capture.original_url }}</a></td>
+    <td>{{ capture.mime_type or '—' }}</td>
+    <td>{{ capture.length if capture.length is not none else '—' }}</td>
+    <td><code>{{ capture.digest or '—' }}</code></td>
+    <td><a href="{{ capture.archive_url }}" rel="noopener noreferrer" target="_blank">Open capture</a></td>
+  </tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% elif target and not error %}
+<section class="panel"><p class="empty">No distinct successful captures were returned for this target and date range.</p></section>
+{% endif %}
+{% endblock %}

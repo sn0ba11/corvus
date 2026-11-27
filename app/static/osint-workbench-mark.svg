@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Corvus</title>
+  <desc id="desc">A sage green radar inside a protective shield.</desc>
+  <defs>
+    <linearGradient id="shield" x1="34" y1="18" x2="218" y2="238" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6f8968"/>
+      <stop offset="1" stop-color="#334c39"/>
+    </linearGradient>
+    <linearGradient id="sweep" x1="128" y1="128" x2="204" y2="52" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#dcebd7" stop-opacity=".28"/>
+      <stop offset="1" stop-color="#dcebd7" stop-opacity=".95"/>
+    </linearGradient>
+  </defs>
+  <path d="M128 14 225 48v70c0 60-37 103-97 124C68 221 31 178 31 118V48l97-34Z" fill="url(#shield)" stroke="#a5c19d" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M128 31 207 59v59c0 49-29 85-79 104-50-19-79-55-79-104V59l79-28Z" fill="#17251b" stroke="#dbe8d6" stroke-width="4" stroke-linejoin="round"/>
+  <g fill="none" stroke="#92b58a" stroke-width="4" opacity=".92">
+    <circle cx="128" cy="125" r="63"/>
+    <circle cx="128" cy="125" r="43"/>
+    <circle cx="128" cy="125" r="23"/>
+    <path d="M62 125h132M128 59v132"/>
+  </g>
+  <path d="m128 125 27-67 39 25-66 42Z" fill="url(#sweep)"/>
+  <circle cx="128" cy="125" r="10" fill="#eef5eb" stroke="#52704f" stroke-width="3"/>
+  <g fill="#d7e9d2" stroke="#35523b" stroke-width="2">
+    <circle cx="91" cy="89" r="6"/>
+    <circle cx="83" cy="150" r="8"/>
+    <circle cx="158" cy="151" r="6"/>
+    <circle cx="172" cy="106" r="5"/>
+  </g>
+</svg>

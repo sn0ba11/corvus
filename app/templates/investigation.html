@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+{% block title %}{{ investigation.title }} · Corvus{% endblock %}
+{% block content %}
+<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Dashboard</a><span>/</span><span>{{ investigation.title }}</span></nav>
+
+<section class="case-header">
+  <div class="case-heading">
+    <div>
+      <p class="eyebrow">{{ investigation.query_type|upper }} INVESTIGATION</p>
+      <h1>{{ investigation.title }}</h1>
+      <div class="case-identity"><code>{{ investigation.query }}</code>{% if investigation.case_reference %}<span>Case {{ investigation.case_reference }}</span>{% endif %}{% for tag in investigation.tags %}<span class="source">{{ tag }}</span>{% endfor %}</div>
+    </div>
+    <div class="case-status"><span id="overall" class="badge large {{ investigation.status }}">{{ investigation.status }}</span><small>Created {{ investigation.created_at.strftime('%Y-%m-%d %H:%M') }} UTC</small><div class="case-actions"><a class="button primary" href="/investigations/{{ investigation.id }}/graph">Open graph</a>{% if investigation.status not in ['queued', 'running'] %}<form action="/investigations/{{ investigation.id }}/validate-profiles" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">Validate accounts</button></form>{% endif %}{% if managed_browser_enabled %}<a class="button" href="{{ managed_browser_desktop_url }}" target="_blank" rel="noopener noreferrer">Log in to sock browser</a>{% if investigation.query_type in ['username', 'name'] %}<form action="/investigations/{{ investigation.id }}/browser-search" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit" title="Run the case's web-search pack through the managed sock browser; challenged searches are held for manual action">Search web in sock browser</button></form>{% endif %}{% endif %}<a class="button" href="/investigations/{{ investigation.id }}/raw-json" target="_blank" rel="noopener">View raw JSON</a>{% if investigation.status not in ['queued', 'running'] %}<form action="/investigations/{{ investigation.id }}/analyze-retained-artifacts" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">Analyze retained files</button></form>{% endif %}<a class="button" href="/investigations/{{ investigation.id }}/report" target="_blank" rel="noopener">Open report</a></div></div>
+  </div>
+  <div class="case-nav" aria-label="Investigation sections">
+    <a href="#overview">Activity</a><a href="/investigations/{{ investigation.id }}/graph">Graph</a>{% if account_view.enabled %}<a href="#unified-account-view">Accounts</a><a href="#unified-account-view">Timeline</a>{% endif %}{% if historical_url_view.enabled %}<a href="#historical-urls">Historical URLs</a>{% endif %}{% if site_intelligence_view.enabled %}<a href="#site-intelligence">Live Site</a>{% endif %}<a href="#findings-section">Technical findings</a><a href="#analysis">Next actions</a><a href="#reporting">Report</a><a href="#case-management">Settings</a>
+  </div>
+</section>
+
+<section class="panel" id="known-identifiers">
+  <h2>Known identifiers in this case</h2>
+  <p><code>{{ investigation.query }}</code> <span class="badge">{{ investigation.query_type }}</span>{% for seed in additional_identifiers %} · <code>{{ seed.value }}</code> <span class="badge">{{ seed.query_type.value }}</span>{% endfor %}</p>
+  {% if investigation.status not in ['queued', 'running'] %}
+  <details><summary title="Search another username, email address, full name, phone number or domain for the same subject inside this case">Add what else you know</summary>
+    <form action="/investigations/{{ investigation.id }}/identifiers" method="post">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label title="One identifier per line. The type is detected for each line; start a line with username:, name:, email:, phone: or domain: to force it">Other identifiers for the same subject<textarea name="additional_identifiers" rows="3" maxlength="3000" placeholder="jane.example@example.org&#10;Jane Example&#10;username: jane.example" required></textarea></label>
+      <button type="submit" title="Queue the standard collectors for each new identifier in this case. Existing findings and runs are kept">Search these too</button>
+      <small>Up to {{ max_additional_identifiers }} at a time. Each identifier runs the standard collectors for its type; results stay in this case.</small>
+    </form>
+  </details>
+  {% endif %}
+</section>
+
+{% if investigation.query_type == 'username' and not investigation.extended_username_search and investigation.status not in ['queued', 'running'] %}
+<section class="panel">
+  <h2>Need wider username coverage?</h2>
+  <p>Run the broader Maigret all-sites sweep and Naminter/WhatsMyName checks in this case. Existing findings and earlier runs stay available. This can take longer and may return more unverified leads.</p>
+  <form action="/investigations/{{ investigation.id }}/deeper-username-search" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit" title="Add a Maigret all-sites sweep and Naminter/WhatsMyName collection to this case. Existing findings and earlier runs are kept">Run deeper username search</button></form>
+</section>
+{% endif %}
+<section class="metric-grid case-metrics" aria-label="Investigation summary">
+  <article class="metric-card accent"><span>Positive findings</span><strong>{{ summary.positive_findings }}</strong><small>{{ summary.findings_total }} records across {{ summary.platform_count }} platforms</small></article>
+  <article class="metric-card"><span>Account validation</span><strong>{{ summary.verification_attempt_count }}/{{ summary.profile_claim_count }}</strong><small>{{ summary.verified_account_count }} confirmed · {{ summary.likely_account_count }} likely · {{ summary.dead_profile_count }} missing · {{ summary.unresolved_verification_count }} unresolved</small></article>
+  <article class="metric-card"><span>Location evidence</span><strong>{{ summary.location_observation_count }}</strong><small>{{ summary.location_place_count }} distinct places</small></article>
+  <article class="metric-card"><span>Collection progress</span><strong>{{ summary.completed_run_count }}/{{ summary.tool_run_count }}</strong><small>{{ summary.failed_run_count }} unsuccessful</small></article>
+</section>
+
+{% set running_runs = investigation.runs|selectattr('status', 'equalto', 'running')|list %}
+{% set queued_runs = investigation.runs|selectattr('status', 'equalto', 'queued')|list %}
+<section id="overview" class="panel activity-panel" data-overall-status="{{ investigation.status }}">
+  <div class="activity-heading">
+    <div class="activity-copy">
+      <p class="eyebrow">CURRENT ACTIVITY</p>
+      <h2 id="activity-title">{% if running_runs %}Running {{ running_runs|length }} collector{% if running_runs|length != 1 %}s{% endif %}{% elif queued_runs %}Preparing collectors{% elif investigation.status == 'running' %}Finishing analysis{% elif investigation.status == 'completed' %}Investigation complete{% elif investigation.status == 'cancelled' %}Investigation cancelled{% else %}Investigation {{ investigation.status|replace('_', ' ') }}{% endif %}</h2>
+      <p id="activity-message">{% if running_runs %}{{ running_runs|map(attribute='display_name')|join(', ') }}{% elif queued_runs %}Waiting to start {{ queued_runs|map(attribute='display_name')|join(', ') }}{% elif investigation.status == 'running' %}Verifying profiles and checking historical coverage.{% elif investigation.status == 'completed' %}Collection and automatic follow-up have finished. Review the findings below.{% elif investigation.status == 'cancelled' %}Active collection was stopped by the operator.{% else %}No collector is currently active.{% endif %}</p>
+    </div>
+    <span id="activity-overall" class="badge large {{ investigation.status }}">{{ investigation.status }}</span>
+  </div>
+  <div class="activity-progress" role="progressbar" aria-label="Collector completion" aria-valuemin="0" aria-valuemax="{{ summary.tool_run_count }}" aria-valuenow="{{ summary.completed_run_count + summary.failed_run_count }}"><span id="activity-progress-bar"></span></div>
+  <div id="activity-tools" class="activity-tools" aria-live="polite">
+    {% for run in investigation.runs %}<span class="activity-chip {{ run.status }}" data-run="{{ run.id }}" data-tool="{{ run.tool_id }}" data-name="{{ run.display_name }}" data-status="{{ run.status }}" data-started-at="{{ run.started_at.isoformat() if run.started_at else '' }}" data-timeout-seconds="{{ run.timeout_seconds }}"><i aria-hidden="true"></i><strong>{{ run.display_name }}</strong><small class="activity-chip-status">{{ run.status|replace('_', ' ') }}</small></span>{% else %}<span class="muted">No automated collectors were selected for this search.</span>{% endfor %}
+  </div>
+  {% if investigation.status in ["queued", "running"] %}<form action="/investigations/{{ investigation.id }}/cancel" method="post" class="activity-cancel"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="danger">Cancel investigation</button></form>{% endif %}
+</section>
+
+{% if retry_started %}<section class="notice success"><strong>Collector retry queued.</strong> The original attempt, logs and findings are preserved below.</section>{% endif %}
+<details class="panel run-details" {% if summary.failed_run_count or summary.rate_limited_run_count %}open{% endif %}>
+  <summary><span><strong>Detailed tool runs</strong><small>Versions, timeouts, runtime and failures</small></span><span class="badge">{{ summary.tool_run_count }} runs</span></summary>
+  <div id="runs" class="run-list details-run-list">
+    {% for run in investigation.runs %}
+    <div class="run" id="run-{{ run.id }}" data-run="{{ run.id }}" data-tool="{{ run.tool_id }}">
+      <div><strong>{{ run.display_name }}</strong><small>{{ run.tool_id }}{% if run.tool_version %} · {{ run.tool_version }}{% endif %}{% if run.pivot_depth %} · username pivot <code>{{ run.query_value }}</code> · {{ 'automatic' if run.pivot_automatic else 'analyst approved' }}{% endif %}</small></div>
+      <span class="run-status badge {{ run.status }}">{{ run.status }}</span>
+      <div class="run-detail"><span>{{ run.timeout_seconds }}s timeout</span>{% if run.duration_ms is not none %}<span>{{ (run.duration_ms / 1000)|round(1) }}s runtime</span>{% endif %}{% if run.rate_limited %}<span class="warning-text">Rate limited</span>{% endif %}<a href="/investigations/{{ investigation.id }}/runs/{{ run.id }}/log" target="_blank" rel="noopener">Execution log</a><a href="/investigations/{{ investigation.id }}/raw-json?run_id={{ run.id }}" target="_blank" rel="noopener">Raw JSON</a></div>
+      {% if run.error_message %}<p class="run-error">{{ run.error_message }}</p>{% endif %}
+      {% if run.id in retry_attempts %}<small class="run-detail">Retried in a <a href="#run-{{ retry_attempts[run.id] }}">new attempt</a>; this attempt is retained.</small>{% endif %}
+      {% if run.id in retryable_run_ids and investigation.status not in ['queued', 'running'] %}
+      <form action="/investigations/{{ investigation.id }}/runs/{{ run.id }}/retry" method="post" class="collector-retry-form">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <label title="Maximum runtime for the new attempt, 10–3,600 seconds">Retry timeout (seconds)<input type="number" name="timeout" min="10" max="3600" value="{{ run.timeout_seconds }}" required></label>
+        <button type="submit" title="Rerun only this collector with the original query and pivot context. The earlier attempt and its evidence are kept">Retry {{ run.display_name }}</button>
+        <small>Creates a new attempt; retains this attempt and its evidence.</small>
+      </form>
+      {% endif %}
+    </div>
+    {% else %}<div class="empty-state"><strong>No tool runs</strong><p>This investigation has no configured collection tools.</p></div>{% endfor %}
+  </div>
+</details>
+
+{% if searxng_manual_actions %}
+<details class="notice warning search-challenge-summary">
+  <summary><strong>{{ searxng_manual_actions|length }} blocked search{% if searxng_manual_actions|length != 1 %}es{% endif %} can be cleared in the managed browser</strong><span class="badge running">manual action</span></summary>
+  <p>Choose the exact blocked search below. Corvus opens the managed-browser desktop immediately, starts the challenge handoff, and returns this tab to the held capture controls. After you clear the visible challenge, Resume runs or completes that exact search and imports its results.</p>
+  {% for action in searxng_manual_actions %}
+  <div class="pivot-item">
+    <div><strong>{{ action.engine|title }}</strong><small>{{ action.error }}</small><code>{{ action.query }}</code></div>
+    {% if managed_browser_enabled %}<form action="/investigations/{{ investigation.id }}/searxng-handoff/{{ action.run_id }}/start" method="post" data-open-browser-desktop="{{ managed_browser_desktop_url }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="engine" value="{{ action.engine }}"><input type="hidden" name="query_id" value="{{ action.query_id }}"><button type="submit">Open and clear {{ action.engine|title }}</button></form>{% endif %}
+  </div>
+  {% endfor %}
+  {% if not managed_browser_enabled %}<p class="warning-text">Managed browser support is disabled, so the challenge must be handled outside Corvus.</p>{% endif %}
+</details>
+{% endif %}
+{% if validation_started %}<section class="notice success"><strong>Account validation started.</strong> Refresh this case shortly to see confirmed, likely, missing, blocked and unresolved account states.</section>{% elif validation_already_running %}<section class="notice"><strong>Account validation is already running for this case.</strong></section>{% endif %}
+
+{% include "investigation_accounts.html" %}
+{% include "investigation_historical_urls.html" %}
+{% include "investigation_site_intelligence.html" %}
+
+<section id="findings-section" class="section-block">
+  <div class="section-title">
+    <div><p class="eyebrow">TECHNICAL EVIDENCE REGISTER</p><h2>Underlying findings</h2><p class="section-description">Complete source-level records remain available beneath the unified account presentation. Possible associations are not treated as identity links without supporting evidence.</p></div>
+    <div class="finding-controls"><select id="status-filter" aria-label="Filter findings by status"><option value="positive" selected>Positive only</option><option value="">All statuses</option>{% for s in ["found","likely","unknown","not_found","rate_limited","error"] %}<option value="{{ s }}">{{ s|replace('_',' ')|title }}</option>{% endfor %}</select><input id="finding-filter" aria-label="Filter findings" placeholder="Filter platform or tool"><label class="inline-choice"><input id="group-platform" type="checkbox" checked> Group by platform</label></div>
+  </div>
+  <div class="table-wrap findings-table"><table id="findings"><thead><tr><th data-sort="platform" tabindex="0">Platform ↕</th><th>Finding and profile evidence</th><th data-sort="status" tabindex="0">Status ↕</th><th>Sources</th><th>Technical detail</th></tr></thead><tbody>
+  {% for f in investigation.findings %}
+  <tr id="finding-{{ f.id }}" class="finding-row" data-platform="{{ f.platform or 'Uncategorised' }}" data-status="{{ f.status }}" data-search="{{ f.platform }} {{ f.value }} {{ f.source_tools|join(' ') }}">
+    <td><strong>{{ f.platform or "Uncategorised" }}</strong><br><small>{{ f.finding_type|replace('_',' ') }}</small></td>
+    <td>
+      {% set profile = f.extra.get('profile', {}) %}{% set image_cache = f.extra.get('image_cache', {}) %}{% set verification = f.extra.get('verification', {}) %}{% set platform_details = f.extra.get('platform_details', []) %}{% set wayback = f.extra.get('wayback', {}) %}{% set avatar_retained = image_cache.get('sha256') or f.extra.get('avatar_local_path') %}
+      <div class="profile-summary">
+        {% if avatar_retained and not image_cache.get('error') %}<a class="avatar-preview-trigger" href="/findings/{{ f.id }}/avatar" target="_blank" rel="noopener" data-avatar-preview="/findings/{{ f.id }}/avatar" data-avatar-reverse-base="/findings/{{ f.id }}/reverse-image" data-avatar-alt="Profile image for {{ profile.get('display_name') or f.value or f.platform or 'finding' }}" title="Open full-size retained profile image"><img class="profile-avatar" src="/findings/{{ f.id }}/avatar" alt="Profile image for {{ profile.get('display_name') or f.value or f.platform or 'finding' }}" width="48" height="48" loading="lazy" data-avatar-image></a><span class="avatar-placeholder" hidden aria-label="Profile image unavailable">?</span>{% elif image_cache.get('error') %}<span class="avatar-placeholder blocked" title="{{ image_cache.get('error') }}" aria-label="Profile image blocked">!</span>{% elif profile.get('avatar_url') %}<span class="avatar-placeholder" title="Profile image available on demand" aria-label="Profile image available on demand">+</span>{% else %}<span class="avatar-placeholder" aria-label="No profile image available">—</span>{% endif %}
+        <div class="profile-copy">
+          {% if profile.get('display_name') %}<strong class="profile-name">{{ profile.get('display_name') }}</strong>{% endif %}
+          {% if f.canonical_url and f.status in ['found', 'likely'] %}<a class="finding-link" href="{{ f.canonical_url }}" rel="noopener noreferrer" target="_blank">{{ f.value or f.canonical_url }}</a>{% elif f.canonical_url %}<span class="finding-link muted">{{ f.value or f.canonical_url }}</span><small>Unverified candidate URL retained in technical detail.</small>{% else %}<span>{{ f.value or "—" }}</span>{% endif %}
+          {% if profile.get('biography') %}<p>{{ profile.get('biography') }}</p>{% elif f.description %}<p>{{ f.description }}</p>{% endif %}
+          {% if f.extra.get('query_matches') %}<small class="search-query-provenance">Matched Bing queries: {% for match in f.extra.get('query_matches', []) %}{{ match.get('query_label') }}{% if not loop.last %} · {% endif %}{% endfor %}</small>{% endif %}
+          <div class="profile-facts">{% if profile.get('account_id') %}<span>Account ID: {{ profile.get('account_id') }}</span>{% endif %}{% if profile.get('location') %}<span>Location: {{ profile.get('location') }}</span>{% endif %}{% if profile.get('followers') is not none %}<span>{{ profile.get('followers') }} followers</span>{% endif %}{% if profile.get('following') is not none %}<span>{{ profile.get('following') }} following</span>{% endif %}{% if profile.get('verified') %}<span>Platform verified</span>{% endif %}{% if f.extra.get('is_business') %}<span>Business account{% if f.extra.get('business_category_name') %}: {{ f.extra.get('business_category_name') }}{% endif %}</span>{% endif %}{% if f.extra.get('public_email') %}<span>Public email: {{ f.extra.get('public_email') }}</span>{% endif %}{% if f.extra.get('public_phone_number') %}<span>Public phone: {{ f.extra.get('public_phone_number') }}</span>{% endif %}{% if f.extra.get('obfuscated_email') %}<span>Recovery-hint email: {{ f.extra.get('obfuscated_email') }}</span>{% endif %}{% if f.extra.get('obfuscated_phone_number') %}<span>Recovery-hint phone: {{ f.extra.get('obfuscated_phone_number') }}</span>{% endif %}{% if f.extra.get('external_url') %}<a href="{{ f.extra.get('external_url') }}" target="_blank" rel="noopener noreferrer">External site</a>{% endif %}{% if verification.get('existence_state') %}<span class="badge {{ 'completed' if verification.get('existence_state') == 'confirmed' else ('not_found' if verification.get('existence_state') in ['not_found', 'mismatch'] else 'unknown') }}">Account {{ verification.get('existence_state')|replace('_', ' ') }}</span>{% elif verification.get('state') %}<span class="badge unknown">{{ verification.get('state')|replace('_', ' ') }}</span>{% endif %}</div>
+          {% if platform_details %}<div class="platform-detail-list">{% for detail in platform_details %}<span><strong>{{ detail.get('label') }}:</strong> {{ detail.get('value') }}</span>{% endfor %}</div>{% endif %}
+          {% if wayback.get('first_capture') %}<div class="platform-detail-list archive-detail-list"><span><strong>First archived:</strong> <a href="{{ wayback.get('first_capture').get('archive_url') }}" target="_blank" rel="noopener noreferrer">{{ wayback.get('first_capture').get('captured_at', '')[:10] }}</a></span><span><strong>Latest distinct capture:</strong> <a href="{{ wayback.get('latest_capture').get('archive_url') }}" target="_blank" rel="noopener noreferrer">{{ wayback.get('latest_capture').get('captured_at', '')[:10] }}</a></span><span><strong>Distinct captures indexed:</strong> {{ wayback.get('capture_count', 0) }}{% if wayback.get('capture_count', 0) >= wayback.get('capture_limit', 50) %}+{% endif %}</span></div><small>Wayback dates are archive observations, not proof of page creation or publication.</small>{% elif wayback.get('automatic_checked_at') and not wayback.get('error') %}<small>No public Wayback capture was found for this URL.</small>{% endif %}
+          {% if verification.get('method') %}<small>Checked by {{ verification.get('method')|replace('_', ' ') }}{% if verification.get('limitation') %} · {{ verification.get('limitation') }}{% endif %}</small>{% endif %}
+          <small class="avatar-state">{% if profile.get('avatar_url') %}{% if f.extra.get('avatar_quality') == 'hd' %}authenticated HD image{% if f.extra.get('avatar_width') and f.extra.get('avatar_height') %} · {{ f.extra.get('avatar_width') }}×{{ f.extra.get('avatar_height') }}{% endif %}{% elif 'instaloader' in f.source_tools and f.extra.get('session_loaded') is sameas false %}standard image · Instagram session missing in sock browser{% elif image_cache.get('sha256') %}profile image retained locally{% elif f.extra.get('avatar_local_path') %}collector image retained locally{% elif image_cache.get('error') %}image unavailable · {{ image_cache.get('error') }}{% elif f.extra.get('avatar_error') %}image unavailable · {{ f.extra.get('avatar_error') }}{% else %}profile image available on demand{% endif %}{% if avatar_retained %} · click image to enlarge{% elif not image_cache.get('error') %} · use Load image below{% endif %}{% else %}no image reported{% endif %}</small>
+          {% if profile.get('avatar_url') and not image_cache.get('error') %}<small class="avatar-tools">{% if not avatar_retained %}<a class="avatar-preview-trigger" href="/findings/{{ f.id }}/avatar" target="_blank" rel="noopener" data-avatar-preview="/findings/{{ f.id }}/avatar" data-avatar-reverse-base="/findings/{{ f.id }}/reverse-image" data-avatar-alt="Profile image for {{ profile.get('display_name') or f.value or f.platform or 'finding' }}">Load image</a>{% endif %}<span>Reverse search:</span><a href="/findings/{{ f.id }}/reverse-image/google" target="_blank" rel="noopener noreferrer">Google</a><a href="/findings/{{ f.id }}/reverse-image/yandex" target="_blank" rel="noopener noreferrer">Yandex</a><a href="/findings/{{ f.id }}/reverse-image/bing" target="_blank" rel="noopener noreferrer">Bing</a><a href="/findings/{{ f.id }}/reverse-image/tineye" target="_blank" rel="noopener noreferrer">TinEye</a></small>{% endif %}
+        </div>
+      </div>
+      {% set correlation = f.extra.get('image_correlation', {}) %}
+      {% for match in correlation.get('matches', []) %}<div class="correlation-lead"><div><strong>{{ match.get('match_type')|title }} image match</strong><small>Distance {{ match.get('distance') }} · {{ match.get('decision', 'unreviewed') }}</small></div><form action="/investigations/{{ investigation.id }}/image-match/{{ f.id }}/{{ match.get('peer_id') }}" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button name="decision" value="accepted">Accept</button><button name="decision" value="rejected">Reject</button><button name="decision" value="unreviewed">Reset</button></form></div>{% endfor %}
+      {% set face_matching = f.extra.get('face_matching', {}) %}
+      {% if face_matching.get('error') %}<div class="correlation-lead"><div><strong>Local face matching unavailable</strong><small>{{ face_matching.get('error') }}</small></div></div>{% endif %}
+      {% for match in face_matching.get('matches', []) %}<div class="correlation-lead face-candidate"><div><strong>Face similarity candidate · {{ (match.get('similarity', 0) * 100)|round(1) }}%</strong><small>{{ match.get('peer_display_name') or match.get('peer_value') or 'Unknown account' }} · {{ match.get('peer_platform') or 'Uncategorised' }}{% if match.get('peer_investigation_id') != investigation.id %} · cross-investigation{% endif %} · {{ match.get('decision', 'unreviewed') }}</small><small>Similarity is a model score, not an identity probability.</small>{% if match.get('peer_investigation_id') %}<a href="/investigations/{{ match.get('peer_investigation_id') }}" target="_blank" rel="noopener">Open {{ match.get('peer_investigation_title') or 'related investigation' }}</a>{% endif %}</div><form action="/investigations/{{ investigation.id }}/face-match/{{ f.id }}/{{ match.get('peer_id') }}" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button name="decision" value="accepted">Accept</button><button name="decision" value="rejected">Reject</button><button name="decision" value="unreviewed">Reset</button></form></div>{% endfor %}
+      {% set account_correlation = f.extra.get('account_correlation', {}) %}
+      {% for match in account_correlation.get('matches', []) %}<div class="correlation-lead"><div><strong>Related account score {{ match.get('score') }}/100</strong><small>{% for signal in match.get('signals', []) %}{{ signal.get('type')|replace('_', ' ') }} +{{ signal.get('weight') }}{% if not loop.last %} · {% endif %}{% endfor %} · {{ match.get('decision', 'unreviewed') }}</small></div><form action="/investigations/{{ investigation.id }}/account-match/{{ f.id }}/{{ match.get('peer_id') }}" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button name="decision" value="accepted">Accept</button><button name="decision" value="rejected">Reject</button><button name="decision" value="unreviewed">Reset</button></form></div>{% endfor %}
+    </td>
+    <td><span class="badge {{ f.status }}">{{ f.status|replace('_',' ') }}</span>{% if verification.get('existence_state') %}<br><small>Existence: {{ verification.get('existence_state')|replace('_', ' ') }}{% if verification.get('existence_confidence') %} ({{ (verification.get('existence_confidence') * 100)|round|int }}%){% endif %}</small>{% endif %}{% if f.confidence is not none %}<br><small>Finding confidence: {{ (f.confidence * 100)|round|int }}%</small>{% endif %}</td>
+    <td>{% for source in f.source_tools %}<span class="source">{{ source }}</span>{% endfor %}<br><small>{{ f.observed_at.strftime('%Y-%m-%d %H:%M') }} UTC</small></td>
+    <td>
+      <button type="button" class="json-record-button" data-json-dialog="finding-json-{{ f.id }}">View parsed record</button>
+      {% if f.finding_type == 'tiktok_video_evidence' and f.extra.get('acquisition_id') %}<a class="button" href="/investigations/{{ investigation.id }}/tiktok/evidence/{{ f.extra.get('acquisition_id') }}.zip">Download verified TikTok evidence ZIP</a><small>SHA-256: {{ f.extra.get('media_sha256') }}</small>{% endif %}
+      {% set tiktok_url = f.canonical_url or '' %}
+      {% set tiktok_host = tiktok_url.split('/')[2]|lower if tiktok_url.startswith('https://') and tiktok_url.split('/')|length > 2 else '' %}
+      {% if tiktok_host == 'tiktok.com' or tiktok_host.endswith('.tiktok.com') %}
+      {% if '/video/' in tiktok_url and '/@' in tiktok_url %}
+      <form action="/investigations/{{ investigation.id }}/tiktok/evidence" method="post" class="archive-handoff-form"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="video_url" value="{{ tiktok_url }}"><button type="submit">Capture TikTok MP4 + evidence</button><small>Public video · 12 MiB limit</small></form>
+      {% else %}
+      <details class="archive-handoff-form"><summary>Capture TikTok video</summary><form action="/investigations/{{ investigation.id }}/tiktok/evidence" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><label>Paste an individual video URL from this account<input type="url" name="video_url" required maxlength="2048" placeholder="https://www.tiktok.com/@account/video/123456789"></label><button type="submit">Capture MP4 + evidence</button></form><small>Account hits are profiles, not videos. Select a public video first.</small></details>
+      {% endif %}
+      {% endif %}
+      {% if f.canonical_url and f.status in ['found', 'likely'] %}<form action="/investigations/{{ investigation.id }}/auto-archiver/bundle" method="post" class="archive-handoff-form"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="finding_ids" value="{{ f.id }}"><button type="submit" title="Prepare a local Auto Archiver handoff bundle for this finding's public URL. Corvus does not submit it anywhere">Auto Archiver bundle</button><small>Local handoff only</small></form>{% endif %}
+      <dialog id="finding-json-{{ f.id }}" class="json-dialog" aria-labelledby="finding-json-title-{{ f.id }}">
+        <div class="json-dialog-shell">
+          <div class="json-dialog-heading">
+            <div><p class="eyebrow">PARSED FINDING RECORD</p><h2 id="finding-json-title-{{ f.id }}">{{ f.platform or 'Uncategorised' }}</h2><small>{{ f.finding_type|replace('_', ' ') }} · {{ f.source_tools|join(', ') }}</small></div>
+            <div class="json-toolbar"><button type="button" data-copy-json-target="finding-json-{{ f.id }}">Copy JSON</button><button type="button" data-toggle-json-wrap-target="finding-json-{{ f.id }}">Wrap lines</button><button type="button" data-close-json-dialog>Close</button></div>
+          </div>
+          <pre class="json-code json-record-code" data-json-syntax><code>{{ f.extra|tojson(indent=2) }}</code></pre>
+        </div>
+      </dialog>
+    </td>
+  </tr>
+  {% else %}<tr><td colspan="5" class="empty">{% if investigation.query_type == 'name' and investigation.status not in ['queued', 'running'] %}<strong>No relevant name results were retained.</strong><br>Review the Bing and SearXNG execution logs for returned, rejected and upstream-failure counts. Unrelated search-engine results are deliberately excluded from the evidence register.{% elif investigation.status in ['queued', 'running'] %}No findings yet. Live results will appear as tools finish.{% else %}No findings were retained for this investigation. Review the detailed tool-run logs for collector diagnostics.{% endif %}</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+
+<dialog id="avatar-preview-dialog" class="avatar-preview-dialog">
+  <div class="avatar-preview-frame">
+    <div class="avatar-preview-heading"><strong>Retained profile image</strong><form method="dialog"><button type="submit" class="button">Close</button></form></div>
+    <img id="avatar-preview-image" alt="Full-size retained profile image">
+    <div class="avatar-preview-actions"><a class="button primary" data-reverse-provider="google" href="#" target="_blank" rel="noopener noreferrer">Google Lens</a><a class="button" data-reverse-provider="yandex" href="#" target="_blank" rel="noopener noreferrer">Yandex</a><a class="button" data-reverse-provider="bing" href="#" target="_blank" rel="noopener noreferrer">Bing</a><a class="button" data-reverse-provider="tineye" href="#" target="_blank" rel="noopener noreferrer">TinEye</a><a id="avatar-preview-open" class="button" href="#" target="_blank" rel="noopener">Open image</a></div>
+  </div>
+</dialog>
+
+<section id="analysis" class="section-block">
+  <div class="section-title"><div><p class="eyebrow">NEXT ACTIONS</p><h2>Continue the investigation</h2><p class="section-description">Choose a focused task. Specialist enrichment and correlation controls are available separately below.</p></div></div>
+  <div class="analysis-grid">
+    <a class="analysis-card" href="/investigations/{{ investigation.id }}/graph"><span class="analysis-index">01</span><div><strong>Investigation graph</strong><p>Explore identifiers, accounts, images, domains, locations, archives and source provenance as an interactive evidence map.</p></div><span class="arrow">→</span></a>
+    <a class="analysis-card" href="/investigations/{{ investigation.id }}/locations"><span class="analysis-index">02</span><div><strong>Location intelligence</strong><p>{{ summary.location_observation_count }} observations across {{ summary.location_place_count }} places. Add or collect dated review and fitness evidence.</p></div><span class="arrow">→</span></a>
+    <a class="analysis-card" href="/investigations/{{ investigation.id }}/google-dorks" title="Open curated Google query packs for this case. Opening or copying a search does not create a finding"><span class="analysis-index">03</span><div><strong>Google dork search</strong><p>Use curated public-web dorks with copyable queries and direct Google search links.</p></div><span class="arrow">→</span></a>
+    <a class="analysis-card" href="/investigations/{{ investigation.id }}/search-queries"><span class="analysis-index">04</span><div><strong>Search query workbench</strong><p>Launch deterministic Google, Bing, SOCK-browser and SearXNG pivots without contaminating stored findings.</p></div><span class="arrow">→</span></a>
+    <a class="analysis-card" href="/investigations/{{ investigation.id }}/wayback"><span class="analysis-index">05</span><div><strong>Wayback and identity evolution</strong><p>{{ summary.wayback_checked_count }} profiles checked automatically · {{ summary.wayback_capture_count }} distinct captures across {{ summary.wayback_archived_count }} archived profiles.</p></div><span class="arrow">→</span></a>
+    <a class="analysis-card" href="/investigations/{{ investigation.id }}/browser"><span class="analysis-index">06</span><div><strong>Browser evidence capture</strong><p>Collect an approved authenticated page with screenshots and provenance.</p></div><span class="arrow">→</span></a>
+  </div>
+
+  {% if toolkit_recommendations %}
+  <details class="panel advanced-workbench">
+    <summary title="External registers, filings and archive services suggested for this case. Nothing is contacted until you open one"><span><strong>Investigator resource recommendations</strong><small>Official registers, filings and explicit archive handoffs relevant to this case</small></span><span class="badge">{{ toolkit_recommendations|length }} suggestions</span></summary>
+    <div class="advanced-workbench-body">
+      <div class="pivot-list">
+        {% for recommendation in toolkit_recommendations %}
+        <div class="pivot-item">
+          <div><strong>{{ recommendation.label }}</strong><small>{{ recommendation.category }}{% if recommendation.jurisdiction %} · {{ recommendation.jurisdiction }}{% endif %} · {{ recommendation.reason }}{% if recommendation.search_value %} · Search value: <code>{{ recommendation.search_value }}</code>{% endif %}{% if recommendation.sends_case_value %} · <strong>launch sends case data</strong>{% endif %}</small></div>
+          <a class="button" href="/investigations/{{ investigation.id }}/toolkit/{{ recommendation.key }}" target="_blank" rel="noopener noreferrer" title="Open {{ recommendation.destination_host }} in a new tab; the launch is audited.{% if recommendation.sends_case_value %} This link sends the case search value to that site.{% endif %}">Open</a>
+        </div>
+        {% endfor %}
+      </div>
+      <p class="muted">Recommendations are not findings. External launches are explicit and recorded in the case audit trail.</p>
+    </div>
+  </details>
+  {% endif %}
+
+  <details class="panel advanced-workbench">
+    <summary><span><strong>Advanced enrichment and correlation</strong><small>Profile fetching, identity pivots, image matching and account scoring</small></span><span class="badge">Specialist tools</span></summary>
+    <div class="advanced-workbench-body">
+  {% if evidence_clusters %}
+  <article class="panel pivot-workbench">
+    <div class="panel-heading"><div><p class="eyebrow">EVIDENCE CLUSTERS</p><h3>Multi-signal account clusters</h3><p>Derived from account-correlation scores and analyst decisions. Clusters are a review aid, not an identity assertion; split/merge overrides never rewrite the underlying findings.</p></div><span class="badge">{{ evidence_clusters|length }} clusters</span></div>
+    <div class="pivot-list">
+      {% for cluster in evidence_clusters %}
+      <div class="pivot-item"><div><strong>{{ cluster.labels|join(' · ') }}</strong><small>{{ cluster.platforms|join(', ') }} · strongest score {{ cluster.strongest_score }}/100{% if cluster.rationale %} · {% for reason in cluster.rationale %}{{ reason.signal|replace('_',' ') }} ×{{ reason.supporting_pairs }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}</small>{% if cluster.note %}<p>{{ cluster.note }}</p>{% endif %}<form action="/investigations/{{ investigation.id }}/clusters/{{ cluster.id }}/note" method="post" class="inline-form"><input type="hidden" name="csrf" value="{{ csrf }}"><input name="note" maxlength="2000" value="{{ cluster.note or '' }}" placeholder="Cluster-level analyst note"><button type="submit">Save note</button></form></div>{% if cluster.finding_ids|length >= 2 %}<form action="/investigations/{{ investigation.id }}/clusters/pair" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="left_id" value="{{ cluster.finding_ids[0] }}"><input type="hidden" name="right_id" value="{{ cluster.finding_ids[1] }}"><button name="action" value="split">Split first pair</button><button name="action" value="reset">Reset override</button></form>{% endif %}</div>
+      {% endfor %}
+    </div>
+    <form action="/investigations/{{ investigation.id }}/clusters/pair" method="post" class="details-form"><input type="hidden" name="csrf" value="{{ csrf }}"><div class="grid two"><label>First finding<select name="left_id" required>{% for item in investigation.findings %}<option value="{{ item.id }}">{{ item.platform or item.finding_type }} · {{ item.title or item.value or item.id[:8] }}</option>{% endfor %}</select></label><label>Second finding<select name="right_id" required>{% for item in investigation.findings %}<option value="{{ item.id }}">{{ item.platform or item.finding_type }} · {{ item.title or item.value or item.id[:8] }}</option>{% endfor %}</select></label></div><div class="inline-options"><button name="action" value="merge">Force merge</button><button name="action" value="split">Force split</button><button name="action" value="reset">Reset pair override</button></div><small>Use this only to express an analyst review decision. Source findings and correlation signals are retained unchanged.</small></form>
+  </article>
+  {% endif %}
+
+  {% if display_name_pivots %}
+  <article class="panel pivot-workbench">
+    <div class="panel-heading"><div><p class="eyebrow">DERIVED IDENTITY</p><h3>Full-name pivots</h3><p>Names extracted from positive profile evidence are automatically added to exact-name, name-plus-identifier and selected-platform search queries.</p></div><span class="badge">{{ display_name_pivots|length }} names</span></div>
+    <div class="pivot-list">
+      {% for pivot in display_name_pivots %}<div class="pivot-item"><div><strong>{{ pivot.value }}</strong><small>{{ pivot.platforms|join(', ') }} · {{ pivot.source_tools|join(', ') }}</small></div><a class="button" href="/investigations/{{ investigation.id }}/search-queries">Open name searches</a></div>{% endfor %}
+    </div>
+  </article>
+  {% endif %}
+
+  {% if investigation.query_type == 'name' and handle_candidates %}
+  <article class="panel pivot-workbench">
+    <div class="panel-heading"><div><p class="eyebrow">MANUAL FOLLOW-UP</p><h3>Possible username variants</h3><p>Generated locally from the supplied name. No network request runs until an analyst selects one variant.</p></div><span class="badge">{{ handle_candidates|length }} candidates</span></div>
+    <div class="pivot-list">
+      {% for candidate in handle_candidates %}
+      <div class="pivot-item"><div><strong>@{{ candidate.username }}</strong><small>{{ candidate.provenance }} · {{ candidate.source_name }}</small></div>{% if candidate.followed %}<span class="badge completed">searched</span>{% else %}<form action="/investigations/{{ investigation.id }}/pivots/name-handle" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="username" value="{{ candidate.username }}"><button type="submit" {% if investigation.status in ['queued', 'running'] %}disabled{% endif %} title="Search this one generated username variant in this case. Available once the current run has finished">Run selected variant</button></form>{% endif %}</div>
+      {% endfor %}
+    </div>
+  </article>
+  {% endif %}
+
+  {% if investigation.query_type == 'email' %}
+  <article class="panel pivot-workbench">
+    <div class="panel-heading"><div><p class="eyebrow">BOUNDED FOLLOW-UP</p><h3>Username pivots</h3><p>The email local part and explicit username, login, handle or non-numeric account-ID fields are proposed. Each username can be followed once, at depth one, through every enabled username collector before deterministic verification.</p></div><span class="badge">{{ username_pivots|length }} candidates</span></div>
+    <form action="/investigations/{{ investigation.id }}/pivots/automatic" method="post" class="inline-form pivot-setting"><input type="hidden" name="csrf" value="{{ csrf }}"><label class="inline-choice" title="Applies to this case only: follow corroborated usernames and public emails found later, within the two-hop limit"><input type="checkbox" name="enabled" {% if investigation.auto_follow_username_pivots %}checked{% endif %}> Automatically follow future corroborated identity pivots</label><button type="submit">Save setting</button></form>
+    <div class="pivot-list">
+      {% for pivot in username_pivots %}
+      <div class="pivot-item">
+        <div><strong>@{{ pivot.username }}</strong><small>{% if pivot.platforms %}{{ pivot.platforms|join(', ') }}{% endif %}{% if pivot.source_tools %}{% if pivot.platforms %} · {% endif %}{{ pivot.source_tools|join(', ') }}{% endif %}{% if pivot.reasons %}{% if pivot.platforms or pivot.source_tools %} · {% endif %}{{ pivot.reasons|join(', ') }}{% endif %}</small></div>
+        {% if pivot.followed %}<span class="badge completed">followed</span>{% else %}<form action="/investigations/{{ investigation.id }}/pivots/username" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="username" value="{{ pivot.username }}"><input type="hidden" name="source_finding_id" value="{{ pivot.finding_ids[0] if pivot.finding_ids else '' }}"><button type="submit" {% if investigation.status in ['queued', 'running'] %}disabled{% endif %}>Follow username</button></form>{% endif %}
+      </div>
+      {% else %}<div class="empty-state"><strong>No usable username pivot</strong><p>The email local part was not username-safe and no explicit username fields were returned.</p></div>{% endfor %}
+    </div>
+  </article>
+  {% endif %}
+
+  {% if investigation.query_type == 'username' %}
+  <article class="panel pivot-workbench">
+    <div class="panel-heading"><div><p class="eyebrow">BOUNDED FOLLOW-UP</p><h3>Email pivots</h3><p>Explicit public/contact email fields returned by username collectors can be followed once through the enabled email-capable collectors. Masked recovery hints are not treated as valid email pivots.</p></div><span class="badge">{{ email_pivots|length }} candidates</span></div>
+    <div class="pivot-list">
+      {% for pivot in email_pivots %}
+      <div class="pivot-item">
+        <div><strong>{{ pivot.email }}</strong><small>{% if pivot.platforms %}{{ pivot.platforms|join(', ') }}{% endif %}{% if pivot.source_tools %}{% if pivot.platforms %} · {% endif %}{{ pivot.source_tools|join(', ') }}{% endif %}{% if pivot.reasons %}{% if pivot.platforms or pivot.source_tools %} · {% endif %}{{ pivot.reasons|join(', ') }}{% endif %}</small></div>
+        {% if pivot.followed %}<span class="badge completed">followed</span>{% else %}<form action="/investigations/{{ investigation.id }}/pivots/email" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="email" value="{{ pivot.email }}"><input type="hidden" name="source_finding_id" value="{{ pivot.finding_ids[0] if pivot.finding_ids else '' }}"><button type="submit" {% if investigation.status in ['queued', 'running'] %}disabled{% endif %}>Follow email</button></form>{% endif %}
+      </div>
+      {% else %}<div class="empty-state"><strong>No usable email pivot</strong><p>No explicit public/contact email field has been returned by a positive username finding.</p></div>{% endfor %}
+    </div>
+  </article>
+  {% endif %}
+
+  <div class="operation-grid">
+    <article class="panel operation-card"><h3>Enrich public profiles</h3><p>Fetch bounded public profile metadata for up to 25 found or likely profiles.</p><form action="/investigations/{{ investigation.id }}/enrich" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><label class="inline-choice"><input type="checkbox" name="respect_robots" checked> Respect robots.txt</label><button type="submit">Run enrichment</button><small>Disabling robots enforcement is recorded in the audit trail.</small></form></article>
+    <article class="panel operation-card"><h3>Correlate profile images</h3><p>Compare locally cached images using exact SHA-256 and perceptual dHash.</p><form action="/investigations/{{ investigation.id }}/correlate-images" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><label>Distance threshold<input type="number" name="threshold" value="10" min="0" max="64"></label><button type="submit">Correlate images</button></form></article>
+    <article class="panel operation-card"><h3>Match faces locally</h3><p>Compare detected faces with retained avatars across the local investigation corpus using YuNet and SFace. Results require analyst review.</p><form action="/investigations/{{ investigation.id }}/match-faces" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><label>Minimum cosine similarity<input type="number" name="threshold" value="0.45" min="0" max="1" step="0.01"></label><button type="submit">Match faces</button><small>Runs locally. No image is sent to a face-recognition provider.</small></form></article>
+    <article class="panel operation-card"><h3>Correlate accounts</h3><p>Score transparent username, name, biography, location, domain and image signals.</p><form action="/investigations/{{ investigation.id }}/correlate-accounts" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><label>Minimum score<input type="number" name="minimum_score" value="35" min="0" max="100"></label><button type="submit">Correlate accounts</button></form></article>
+    <article class="panel operation-card"><h3>Analyze retained artifacts</h3><p>Locally inspect already-retained files for hashes, document/image metadata, email and company candidates, and EXIF GPS. No network request is made.</p><form action="/investigations/{{ investigation.id }}/analyze-retained-artifacts" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">Analyze retained files</button></form></article>
+    <article class="panel operation-card"><h3>Infrastructure registry / reputation lookup</h3><p>Explicitly enrich a public IP address or ASN using RIPEstat or ARIN RDAP. A configured AbuseIPDB key adds passive IP abuse reputation without submitting reports.</p><form action="/investigations/{{ investigation.id }}/infrastructure-enrichment" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><label>Public IP or ASN<input name="resource" maxlength="64" placeholder="8.8.8.8 or AS15169" required></label><label>Provider<select name="provider"><option value="ripe">RIPEstat cross-RIR WHOIS</option><option value="arin">ARIN RDAP</option>{% if abuseipdb_configured %}<option value="abuseipdb">AbuseIPDB · 90-day reputation</option>{% endif %}</select></label><button type="submit" title="Look up one public IP address or ASN with the selected provider. Private and non-routable targets are rejected">Enrich infrastructure</button>{% if not abuseipdb_configured %}<small>Configure an AbuseIPDB key in Settings to enable abuse reputation checks.</small>{% endif %}</form></article>
+    <article class="panel operation-card"><h3>Validate EU VAT number</h3><p>Check an EU or Northern Ireland VAT number directly against the European Commission VIES service and retain the response as case evidence.</p><form action="/investigations/{{ investigation.id }}/vies" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><label>VAT number<input name="vat_number" maxlength="32" placeholder="IE6388047V" required></label><button type="submit" title="Send this one VAT number to the official EU VIES service and retain the validation record">Validate with VIES</button><small>Requires the country prefix. Greek VAT numbers may be entered with GR and are normalised to EL.</small></form></article>
+    <article class="panel operation-card"><h3>Capture TikTok video evidence</h3><p>Acquire one publicly accessible TikTok post as an MP4 with metadata, acquisition timestamp, SHA-256 hashes and a verifiable ZIP. Maximum video size 12 MiB; no authentication, comments or bulk collection.</p><form action="/investigations/{{ investigation.id }}/tiktok/evidence" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><label>Public TikTok video URL<input type="url" name="video_url" maxlength="2048" placeholder="https://www.tiktok.com/@account/video/123456789" required></label><button type="submit">Capture and hash TikTok video</button></form></article>
+    <article class="panel operation-card"><h3>Extract public video metadata</h3><p>Use the isolated yt-dlp collector to retain metadata without downloading the media file. Supported inputs are YouTube, Vimeo, X/Twitter, Reddit, Facebook and direct TikTok video URLs. TikTok may reject unauthenticated extraction; a failed request is not evidence that a post does not exist.</p><form action="/investigations/{{ investigation.id }}/video-metadata" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><label>Public video URL<input type="url" name="video_url" maxlength="2048" placeholder="https://www.youtube.com/watch?v=..." required></label><button type="submit" title="Run yt-dlp in metadata-only mode on one supported public video URL. No media is downloaded">Extract metadata</button><small>Metadata-only: no video or audio payload is intentionally downloaded.</small></form></article>
+    <article class="panel operation-card"><h3>Import Telegram Desktop export</h3><p>Parse an analyst-supplied Telegram JSON export locally. Message dates, senders, IDs, replies, links, usernames, email/phone strings and attachment references are retained without contacting Telegram.</p><form action="/investigations/{{ investigation.id }}/telegram/import" method="post" enctype="multipart/form-data"><input type="hidden" name="csrf" value="{{ csrf }}"><label>Telegram JSON export<input type="file" name="telegram_export" accept="application/json,.json" required></label><button type="submit">Import Telegram export</button><small>Maximum 20 MiB / 5,000 messages per import; excess messages are explicitly marked truncated.</small></form></article>
+    <article class="panel operation-card"><h3>Import Discord chat export</h3><p>Parse an analyst-supplied DiscordChatExporter JSON export locally. Message dates, authors (including offline account-creation time derived from their Discord ID), replies, mentions, links, usernames, email/phone strings and attachment references are retained without contacting Discord. Export using a bot token, not a user token, per Discord's terms.</p><form action="/investigations/{{ investigation.id }}/discord/import" method="post" enctype="multipart/form-data"><input type="hidden" name="csrf" value="{{ csrf }}"><label>Discord JSON export<input type="file" name="discord_export" accept="application/json,.json" required></label><button type="submit">Import Discord export</button><small>Maximum 20 MiB / 5,000 messages per import; excess messages are explicitly marked truncated.</small></form></article>
+    <article class="panel operation-card"><h3>Import Discord archive (discrawl SQLite)</h3><p>Parse an analyst-supplied discrawl-compatible SQLite archive locally. Guild, channel, message, mention and attachment records are read directly from the archive; no network request is made and the file is validated against the expected schema before use.</p><form action="/investigations/{{ investigation.id }}/discord/import-sqlite" method="post" enctype="multipart/form-data"><input type="hidden" name="csrf" value="{{ csrf }}"><label>Discord SQLite archive<input type="file" name="discord_archive" accept="application/x-sqlite3,.sqlite,.db" required></label><button type="submit">Import Discord archive</button><small>Maximum 150 MiB file / 5,000 messages per import; excess messages are explicitly marked truncated.</small></form></article>
+  </div>
+    </div>
+  </details>
+</section>
+
+<section id="reporting" class="section-block report-workspace">
+  <div class="report-callout">
+    <div><p class="eyebrow">REPORTING</p><h2>Review the analytical report</h2><p>Preview the concise lead summary, evidence register, location analysis, provenance and limitations before exporting.</p></div>
+    <a class="button primary" href="/investigations/{{ investigation.id }}/report" target="_blank" rel="noopener">Open report preview</a>
+  </div>
+  <details class="report-exports"><summary>Download or export evidence</summary><div class="export-grid"><a href="/investigations/{{ investigation.id }}/export/html"><strong>Printable HTML</strong><span>Self-contained analytical report</span></a><a href="/investigations/{{ investigation.id }}/export/json"><strong>JSON evidence</strong><span>Complete structured record</span></a><a href="/investigations/{{ investigation.id }}/raw-json" target="_blank" rel="noopener"><strong>Raw collector JSON</strong><span>Exact retained upstream artifacts</span></a><a href="/investigations/{{ investigation.id }}/export/csv"><strong>CSV findings</strong><span>Flat finding register</span></a></div><form action="/investigations/{{ investigation.id }}/export/bundle" method="post" class="details-form"><input type="hidden" name="csrf" value="{{ csrf }}"><h3>Portable evidence bundle</h3><p>Create a ZIP with structured selected evidence, optional bounded retained raw artifacts and a SHA-256 manifest. Leave all finding boxes clear to include the complete finding register.</p><div class="inline-options"><label class="inline-choice"><input type="checkbox" name="include_raw" checked> Include bounded raw case artifacts</label><label class="inline-choice"><input type="checkbox" name="redact_identifiers"> Redact identifiers</label><label class="inline-choice"><input type="checkbox" name="redact_notes"> Redact notes</label><label class="inline-choice"><input type="checkbox" name="redact_urls"> Redact external URLs</label></div><details><summary>Select individual findings</summary><div class="pivot-list">{% for item in investigation.findings[:500] %}<label class="inline-choice"><input type="checkbox" name="finding_ids" value="{{ item.id }}"> {{ item.platform or item.finding_type }} · {{ item.title or item.value or item.id[:8] }}</label>{% else %}<span class="muted">No findings available.</span>{% endfor %}</div></details><button type="submit">Download evidence bundle</button></form></details>
+</section>
+
+<section id="case-management" class="section-block case-management">
+  <div class="section-title"><div><p class="eyebrow">CASE SETTINGS</p><h2>Manage investigation</h2></div></div>
+  <div class="content-grid">
+    <details class="panel"><summary>Edit title and notes</summary><form action="/investigations/{{ investigation.id }}/update" method="post" class="details-form"><input type="hidden" name="csrf" value="{{ csrf }}"><label>Title<input name="title" value="{{ investigation.title }}" maxlength="200"></label><label>Notes<textarea name="notes" maxlength="10000">{{ investigation.notes or '' }}</textarea></label><button>Save changes</button></form></details>
+    <details class="panel danger-zone"><summary>Delete local investigation</summary><form action="/investigations/{{ investigation.id }}/delete" method="post" class="details-form"><input type="hidden" name="csrf" value="{{ csrf }}"><p>This permanently removes the local investigation and its evidence records.</p><label>Type DELETE<input name="confirm" autocomplete="off"></label><button class="danger">Delete permanently</button></form></details>
+  </div>
+</section>
+{% if investigation.status in ["queued", "running"] %}<script type="application/json" id="live-config">{"events":"/investigations/{{ investigation.id }}/events"}</script>{% endif %}
+{% endblock %}

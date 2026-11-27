@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Identity evolution · {{ investigation.title }}{% endblock %}
+{% block content %}
+<div class="section-title">
+  <div>
+    <p class="eyebrow">HISTORICAL IDENTITY</p>
+    <h1>Identity evolution</h1>
+    <p class="muted">{{ investigation.title }} · {{ investigation.query }}</p>
+  </div>
+  <a href="/investigations/{{ investigation.id }}/wayback">Back to Wayback</a>
+</div>
+{% if error %}
+<section class="panel"><p class="badge error">{{ error }}</p></section>
+{% elif evolution %}
+<section class="panel">
+  <h2>Analyst summary</h2>
+  {% if evolution.identity_label %}
+  <p><strong>{{ evolution.identity_label }}</strong> was first observed with that display name on <strong>{{ evolution.identity_first_seen.strftime('%Y-%m-%d') }}</strong>.</p>
+  {% else %}
+  <p>No display name was recoverable from the analysed captures.</p>
+  {% endif %}
+  <p>The page was first captured on <strong>{{ evolution.first_seen.strftime('%Y-%m-%d') }}</strong> and last captured on <strong>{{ evolution.last_seen.strftime('%Y-%m-%d') }}</strong>.</p>
+  <p class="muted">Analysed {{ evolution.analysed_capture_count }} of {{ evolution.available_capture_count }} distinct captures. A maximum of 25 evenly distributed captures is analysed per run.</p>
+  {% set picture_changes = evolution.changes|selectattr('change_type', 'equalto', 'profile_picture_changed')|list %}
+  {% if picture_changes %}
+  <p><strong>Profile picture changed {{ picture_changes|length }} time{% if picture_changes|length != 1 %}s{% endif %}:</strong>
+    {% for change in picture_changes %}{{ change.captured_at.strftime('%Y-%m-%d') }}{% if not loop.last %}, {% endif %}{% endfor %}.
+  </p>
+  {% endif %}
+</section>
+<section class="panel">
+  <div class="section-title"><h2>Dated changes</h2><span class="badge">{{ evolution.changes|length }} changes</span></div>
+  {% if evolution.changes %}
+  <div class="table-wrap"><table><thead><tr><th>Date</th><th>Change</th><th>Previous</th><th>Current</th><th>Image distance</th></tr></thead><tbody>
+  {% for change in evolution.changes %}
+  <tr>
+    <td>{{ change.captured_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</td>
+    <td>{{ change.change_type|replace('_', ' ') }}</td>
+    <td>{% if change.change_type.startswith('profile_picture_') and change.previous_value %}<code>{{ change.previous_value }}</code>{% else %}{{ change.previous_value or '—' }}{% endif %}</td>
+    <td>{% if change.change_type.startswith('profile_picture_') and change.current_value %}<code>{{ change.current_value }}</code>{% else %}{{ change.current_value or '—' }}{% endif %}</td>
+    <td>{{ change.distance if change.distance is not none else '—' }}</td>
+  </tr>
+  {% endfor %}
+  </tbody></table></div>
+  {% else %}<p class="empty">No material identity changes were detected between the analysed captures.</p>{% endif %}
+</section>
+<section>
+  <div class="section-title"><h2>Observations</h2><p class="muted">Oldest to newest</p></div>
+  <div class="table-wrap"><table><thead><tr><th>Captured</th><th>Display name</th><th>Biography</th><th>Profile picture</th><th>Archive</th></tr></thead><tbody>
+  {% for observation in evolution.observations %}
+  <tr>
+    <td>{{ observation.captured_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</td>
+    <td>{{ observation.display_name or '—' }}</td>
+    <td>{{ observation.biography or '—' }}</td>
+    <td>
+      {% if observation.avatar_archive_url %}
+      <img class="profile-avatar" src="/investigations/{{ investigation.id }}/wayback/image?timestamp={{ observation.timestamp }}&source_url={{ observation.avatar_source_url|urlencode }}" alt="Archived profile picture from {{ observation.captured_at.strftime('%Y-%m-%d') }}">
+      {% if observation.avatar_sha256 %}<div><code>{{ observation.avatar_sha256 }}</code></div>{% endif %}
+      {% if observation.avatar_error %}<div class="badge error">{{ observation.avatar_error }}</div>{% endif %}
+      {% else %}—{% endif %}
+    </td>
+    <td><a href="{{ observation.archive_url }}" rel="noopener noreferrer" target="_blank">Open capture</a></td>
+  </tr>
+  {% endfor %}
+  </tbody></table></div>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Operator Manual · Corvus{% endblock %}
+{% block content %}
+<section class="manual-shell">
+  <header class="manual-hero">
+    <img src="/static/corvus-mark.jpg?v=corvus-raster-2" alt="Corvus" class="manual-logo">
+    <p class="eyebrow">OPERATOR REFERENCE</p>
+    <h1>Corvus Operator Manual</h1>
+    <p class="manual-subtitle">A practical guide to investigations, evidence handling, search workflows and the managed sock browser.</p>
+    <div class="manual-actions">
+      <a class="button primary" href="/">Open Corvus</a>
+      <a class="button" href="/manual/download" download>Download Markdown</a>
+    </div>
+  </header>
+
+  <div class="manual-layout">
+    <aside class="manual-toc panel" aria-label="Manual contents">
+      <div class="manual-toc-heading"><span>Contents</span><small>{{ manual_toc|length }} sections</small></div>
+      <nav>
+        {% for item in manual_toc %}
+        <a class="manual-toc-link {{ item.level }}" href="#{{ item.anchor }}">{{ item.title }}</a>
+        {% endfor %}
+      </nav>
+    </aside>
+
+    <article class="manual-document panel">
+      <div class="manual-prose">{{ manual_html|safe }}</div>
+    </article>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% if account_view.enabled %}
+<section id="unified-account-view" class="section-block unified-account-view">
+  <div class="section-title unified-heading">
+    <div>
+      <p class="eyebrow">UNIFIED USERNAME RESULTS</p>
+      <h2>Accounts, identity fields and timeline</h2>
+      <p class="section-description">Duplicate collector output is combined by platform and account identifier. Every card retains links to the underlying findings and raw collector evidence.</p>
+    </div>
+    <span class="badge">{{ account_view.summary.account_count }} accounts</span>
+  </div>
+
+  <div class="notice account-methodology"><strong>Interpretation boundary.</strong> {{ account_view.methodology.identity_warning }} {{ account_view.methodology.technical_lead_policy }}</div>
+
+  <div class="metric-grid unified-metrics" aria-label="Unified account summary">
+    <article class="metric-card accent"><span>Priority accounts</span><strong>{{ account_view.summary.priority_account_count }}</strong><small>Rich or multi-collector evidence</small></article>
+    <article class="metric-card"><span>Other positive leads</span><strong>{{ account_view.summary.found_account_count }}</strong><small>Positive single-source results</small></article>
+    <article class="metric-card"><span>Technical candidates</span><strong>{{ account_view.summary.technical_account_count }}</strong><small>Collapsed by default</small></article>
+    <article class="metric-card"><span>Case timeline events</span><strong>{{ account_view.summary.timeline_event_count }}</strong><small>{{ account_view.summary.account_timeline_event_count }} account events · {{ account_view.summary.excluded_timeline_observation_count }} ambiguous dates excluded</small></article>
+  </div>
+
+  <div class="unified-controls">
+    <label>Search accounts<input type="search" id="account-view-search" placeholder="Platform, name, username, location or collector" autocomplete="off"></label>
+    <label>Assessment<select id="account-view-group"><option value="">All presented groups</option><option value="priority">Priority</option><option value="found">Other positive</option><option value="technical">Technical candidates</option></select></label>
+    <label>Source overlap<select id="account-view-overlap"><option value="">Any source count</option><option value="multi">Multiple collectors</option><option value="single">Single collector</option></select></label>
+    <span class="unified-visible-count"><strong data-account-visible-count>{{ account_view.summary.account_count }}</strong> visible</span>
+  </div>
+
+  {% macro account_card(account) %}
+    {% set profile = account.get('profile', {}) %}
+    {% set display_name = profile.get('display_name') or profile.get('account_id') or account.get('value') or 'Unnamed account' %}
+    <article class="unified-account-card group-{{ account.get('group') }}" data-unified-account data-group="{{ account.get('group') }}" data-source-count="{{ account.get('source_count', 0) }}" data-search="{{ account.get('platform') }} {{ display_name }} {{ profile.get('account_id') or '' }} {{ profile.get('location') or '' }} {{ account.get('url') or '' }} {{ account.get('sources', [])|join(' ') }}">
+      <div class="unified-avatar">
+        {% if account.get('avatar_finding_id') %}<a href="/findings/{{ account.get('avatar_finding_id') }}/avatar" target="_blank" rel="noopener" title="Open retained or retrievable profile image"><img src="/findings/{{ account.get('avatar_finding_id') }}/avatar" alt="Profile image for {{ display_name }}" width="64" height="64" loading="lazy" data-avatar-image></a><span hidden>{{ (account.get('platform') or '?')[:2] }}</span>{% else %}<span>{{ (account.get('platform') or '?')[:2] }}</span>{% endif %}
+      </div>
+      <div class="unified-account-main">
+        <div class="unified-account-title">
+          <div><span class="platform-name">{{ account.get('platform') or 'Uncategorised' }}</span><h3>{{ display_name }}</h3></div>
+          <span class="badge {{ account.get('status') }}">{{ account.get('status')|replace('_', ' ') }}</span>
+        </div>
+        {% if account.get('url') and account.get('status') in ['found', 'likely'] %}<a class="unified-account-url" href="{{ account.get('url') }}" target="_blank" rel="noopener noreferrer">{{ account.get('url') }}</a>{% elif account.get('url') %}<span class="unified-account-url muted">{{ account.get('url') }}</span>{% endif %}
+        {% if profile.get('biography') %}<p class="unified-biography">{{ profile.get('biography') }}</p>{% endif %}
+        <div class="unified-facts">
+          {% if profile.get('account_id') %}<span>Username/ID <strong>{{ profile.get('account_id') }}</strong></span>{% endif %}
+          {% if profile.get('location') %}<span>Location <strong>{{ profile.get('location') }}</strong></span>{% endif %}
+          {% if profile.get('followers') is not none %}<span><strong>{{ profile.get('followers') }}</strong> followers</span>{% endif %}
+          {% if profile.get('following') is not none %}<span><strong>{{ profile.get('following') }}</strong> following</span>{% endif %}
+          {% if profile.get('verified') %}<span>Platform verified</span>{% endif %}
+        </div>
+        {% if account.get('details') %}<div class="unified-details">{% for detail in account.get('details') %}<span><strong>{{ detail.get('label') }}:</strong> {{ detail.get('value') }}</span>{% endfor %}</div>{% endif %}
+        {% if account.get('timeline_events') %}<div class="unified-card-events">{% for event in account.get('timeline_events') %}{% if event.get('include_in_timeline') is not sameas false %}<span><strong>{{ event.get('label') }}:</strong> {{ event.get('timestamp') }}{% if event.get('confidence') %} · {{ event.get('confidence') }} confidence{% endif %}</span>{% endif %}{% endfor %}</div>{% endif %}
+        <div class="unified-provenance"><span>{{ account.get('group_reason') }}</span><span>Sources: {% for source in account.get('sources', []) %}<b class="source">{{ source }}</b>{% endfor %}</span></div>
+        <div class="unified-card-actions">
+          {% if account.get('primary_finding_id') %}<a class="button" href="#finding-{{ account.get('primary_finding_id') }}">Open technical record</a>{% endif %}
+          {% if account.get('evidence_links')|length > 1 %}<details><summary>{{ account.get('evidence_links')|length }} supporting findings</summary><div>{% for evidence in account.get('evidence_links') %}<a href="#finding-{{ evidence.get('finding_id') }}">{{ evidence.get('source_tool') }} · {{ evidence.get('observed_at') or 'time unavailable' }}</a>{% endfor %}</div></details>{% endif %}
+        </div>
+      </div>
+    </article>
+  {% endmacro %}
+
+  <section class="unified-account-group" data-unified-group="priority">
+    <div class="panel-heading"><div><p class="eyebrow">REVIEW FIRST</p><h3>Priority accounts</h3><p>Rich profiles or account leads supported by more than one collector.</p></div><span class="badge completed">{{ account_view.groups.priority|length }}</span></div>
+    <div class="unified-account-grid">{% for account in account_view.groups.priority %}{{ account_card(account) }}{% else %}<div class="empty-state"><strong>No priority accounts yet</strong><p>Rich or corroborated accounts will appear here as collectors finish.</p></div>{% endfor %}</div>
+  </section>
+
+  <details class="panel unified-collapsible-group" data-unified-group="found" {% if account_view.groups.priority|length == 0 %}open{% endif %}>
+    <summary><span><strong>Other positive account leads</strong><small>Positive single-source findings that remain useful but need stronger corroboration.</small></span><span class="badge">{{ account_view.groups.found|length }}</span></summary>
+    <div class="unified-account-grid">{% for account in account_view.groups.found %}{{ account_card(account) }}{% else %}<div class="empty-state"><strong>No additional positive leads</strong></div>{% endfor %}</div>
+  </details>
+
+  <details class="panel unified-collapsible-group technical-group" data-unified-group="technical">
+    <summary><span><strong>Technical candidate leads</strong><small>Single-source Sherlock, Nexfil, Social Analyzer and unresolved collector candidates. These remain available without competing with richer evidence.</small></span><span class="badge unknown">{{ account_view.groups.technical|length }}</span></summary>
+    <div class="unified-account-grid">{% for account in account_view.groups.technical %}{{ account_card(account) }}{% else %}<div class="empty-state"><strong>No technical-only candidates</strong></div>{% endfor %}</div>
+  </details>
+
+  <div class="unified-secondary-grid">
+    <section class="panel unified-entities">
+      <div class="panel-heading"><div><p class="eyebrow">GROUPED VALUES</p><h3>Identity entities</h3><p>Values are grouped without asserting that cross-platform accounts belong to one person.</p></div></div>
+      <div class="entity-panel-grid">
+        {% for kind, values in account_view.entities.items() %}
+        <details class="entity-panel" {% if kind in ['names', 'usernames', 'ids'] %}open{% endif %}><summary>{{ kind|title }} <span>{{ values|length }}</span></summary><div>{% for entity in values[:50] %}<article><strong>{{ entity.get('value') }}</strong><small>{{ entity.get('account_count') }} account{% if entity.get('account_count') != 1 %}s{% endif %} · {{ entity.get('platforms')|join(', ') }}</small></article>{% else %}<p class="muted">None extracted.</p>{% endfor %}{% if values|length > 50 %}<p class="muted">{{ values|length - 50 }} additional values retained in JSON export.</p>{% endif %}</div></details>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel unified-timeline-panel">
+      <div class="panel-heading"><div><p class="eyebrow">DATED EVIDENCE</p><h3>Combined case timeline</h3><p>Account events, collector runs, managed-browser captures, location observations and archive observations are shown together while preserving their source semantics.</p></div><span class="badge">{{ account_view.timeline|length }}</span></div>
+      <div class="unified-timeline">{% for event in account_view.timeline[:100] %}<article><time>{{ event.get('timestamp') }}</time><strong>{{ event.get('platform') }} · {{ event.get('label') }}</strong><small>{{ event.get('display_name') or event.get('username') or 'Case event' }} · field <code>{{ event.get('source_field') }}</code>{% if event.get('extractor') %} · {{ event.get('extractor') }}{% endif %}{% if event.get('confidence') %} · {{ event.get('confidence') }} confidence{% endif %}</small></article>{% else %}<div class="empty-state"><strong>No dated case events parsed.</strong></div>{% endfor %}</div>
+      {% if account_view.excluded_timeline_observations %}<details class="excluded-observations"><summary>{{ account_view.excluded_timeline_observations|length }} ambiguous date observation{% if account_view.excluded_timeline_observations|length != 1 %}s{% endif %} retained but excluded</summary>{% for event in account_view.excluded_timeline_observations %}<article><strong>{{ event.get('platform') }} · {{ event.get('label') }} · {{ event.get('timestamp') }}</strong><p>{{ event.get('note') or 'The date meaning is not reliable enough for the combined timeline.' }}</p></article>{% endfor %}</details>{% endif %}
+    </section>
+  </div>
+
+  {% if account_view.parsing_gaps.field_count %}<section class="notice warning"><strong>Parser review required.</strong> {{ account_view.parsing_gaps.field_count }} identity-bearing field{% if account_view.parsing_gaps.field_count != 1 %}s are{% else %} is{% endif %} retained in collector metadata but not yet represented in account cards, entities or timeline. Review the raw JSON before relying on this presentation.</section>{% endif %}
+</section>
+{% endif %}

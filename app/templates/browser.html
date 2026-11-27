@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Managed browser · {{ investigation.title }}{% endblock %}
+{% block content %}
+<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Dashboard</a><span>/</span><a href="/investigations/{{ investigation.id }}">{{ investigation.title }}</a><span>/</span><span>Managed browser</span></nav>
+
+<section class="case-header compact">
+  <div class="case-heading">
+    <div><p class="eyebrow">AUTHENTICATED COLLECTION</p><h1>Managed investigation browser</h1><p class="section-description">Use only the dedicated sock profile. Credentials remain in the browser; matching cookies are supplied ephemerally to supported collectors.</p></div>
+    <div class="case-status">
+      {% if not browser_status.enabled %}<span class="badge unknown">disabled</span>
+      {% elif browser_status.available %}<span class="badge completed">ready</span>
+      {% else %}<span class="badge failed">unavailable</span>{% endif %}
+      {% if browser_status.browser_version %}<small>{{ browser_status.browser_engine|title }} {{ browser_status.browser_version }}{% if browser_status.stealth_enabled %} · stealth{% endif %}</small>{% endif %}
+    </div>
+  </div>
+</section>
+
+{% if searxng_handoff %}
+<section class="notice warning compact-challenge" id="pending-search-challenge">
+  <div class="panel-heading"><div><strong>{{ searxng_handoff.engine|title }} search is held for manual action.</strong><small>Original search: <code>{{ searxng_handoff.query }}</code></small></div><span class="badge running">held</span></div>
+  <div class="actions"><a class="button primary" href="{{ browser_desktop_url }}" target="_blank" rel="noopener noreferrer">Open held capture</a><a class="button" href="#capture-{{ browser_status.pending_job_id }}">Go to capture controls</a></div>
+  <details><summary>What Corvus is doing</summary><p>The managed browser is holding the challenged page. Complete only the visible CAPTCHA/block yourself, then use <strong>Resume after manual action</strong>. For a warm-up handoff Corvus runs the exact original query next; if the original query itself is challenged, Corvus keeps that exact search held and resumes it in place rather than starting it again.</p></details>
+</section>
+{% endif %}
+
+<section class="content-grid overview-grid">
+  <article class="panel">
+    <div class="panel-heading"><div><p class="eyebrow">BROWSER SESSION</p><h2>Operator access</h2></div>{% if browser_status.active_job %}<span class="badge running">job active</span>{% endif %}</div>
+    {% if browser_status.enabled %}
+      <p>Open the browser desktop to sign in, inspect the current page, or complete a challenge. Do not use a personal, work or financial browser profile.</p>
+      <a class="button primary prominent-action" href="{{ browser_desktop_url }}" target="_blank" rel="noopener noreferrer">Log in to sock browser</a>
+      <div class="browser-session-status" aria-label="Managed browser login status">
+        <span class="badge {{ 'completed' if 'instagram' in browser_status.authenticated_sessions else 'unknown' }}">Instagram {{ 'logged in' if 'instagram' in browser_status.authenticated_sessions else 'not logged in' }}</span>
+        <span class="badge {{ 'completed' if 'facebook' in browser_status.authenticated_sessions else 'unknown' }}">Facebook {{ 'logged in' if 'facebook' in browser_status.authenticated_sessions else 'not logged in' }}</span>
+        <span class="badge {{ 'completed' if 'tiktok' in browser_status.authenticated_sessions else 'unknown' }}">TikTok {{ 'logged in' if 'tiktok' in browser_status.authenticated_sessions else 'public/anonymous' }}</span>
+      </div>
+      <p class="muted"><strong>Collector session sharing:</strong> Instaloader receives Instagram cookies only. Maigret receives cookies only for its configured social-site scope. Other collectors remain anonymous. Copies exist for one run and are then deleted.</p>
+      {% if 'instagram' not in browser_status.authenticated_sessions %}<p class="warning-text">Instaloader is currently anonymous. Open this sock browser and sign in to Instagram to obtain the authenticated HD profile image and public business/contact metadata.</p>{% endif %}
+      {% if browser_status.error %}<p class="run-error">Agent status: {{ browser_status.error }}</p>{% endif %}
+    {% else %}
+      <div class="empty-state"><strong>Managed browser is disabled</strong><p>The browser is part of the standard Docker stack. Check the browser-agent service and update this installation.</p></div>
+    {% endif %}
+  </article>
+
+  <aside class="panel case-brief">
+    <div class="panel-heading"><div><p class="eyebrow">TARGET POLICY</p><h2>Allowed sites</h2></div></div>
+    <div class="source-list">{% for host in allowed_hosts %}<span class="source">{{ host }}</span>{% endfor %}</div>
+    <p class="muted">Only public HTTPS targets on this list are accepted. Private addresses, embedded credentials and redirects outside the list are rejected.</p>
+  </aside>
+</section>
+
+{% if browser_status.enabled %}
+<section class="section-block">
+  <div class="section-title"><div><p class="eyebrow">BROWSER ENGINE</p><h2>Choose capture engine</h2><p class="section-description">Chromium and Firefox keep separate persistent stores for the same SOCK identity. Switching is blocked only while a capture is actively held or running.</p></div><span class="badge">{{ browser_status.browser_engine|title }}</span></div>
+  <article class="panel browser-engine-panel">
+    <form action="/investigations/{{ investigation.id }}/browser/engine" method="post" class="engine-choice-form">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit" name="engine" value="chromium" title="Use Chromium for captures. It has its own stored profile for this identity; switching is blocked while a capture is active" class="engine-choice {% if browser_status.browser_engine == 'chromium' %}active{% endif %}" {% if browser_status.active_job or browser_status.browser_engine == 'chromium' %}disabled{% endif %}><strong>Chromium</strong><small>Playwright · Patchright when enabled</small>{% if browser_status.browser_engine == 'chromium' %}<span>Active</span>{% endif %}</button>
+      <button type="submit" name="engine" value="firefox" title="Use patched Firefox for captures. It has its own stored profile for this identity; switching is blocked while a capture is active" class="engine-choice {% if browser_status.browser_engine == 'firefox' %}active{% endif %}" {% if browser_status.active_job or browser_status.browser_engine == 'firefox' %}disabled{% endif %}><strong>Firefox</strong><small>Invisible Playwright · patched Firefox</small>{% if browser_status.browser_engine == 'firefox' %}<span>Active</span>{% endif %}</button>
+    </form>
+    {% if browser_status.active_job %}<p class="warning-text">Finish or abandon the active capture before switching engines.</p>{% endif %}
+  </article>
+  <details class="panel run-details browser-identity-tools"><summary><span><strong>Identity profiles, backup and restore</strong><small>{{ browser_status.active_profile }} · advanced browser administration</small></span></summary>
+    <div class="content-grid details-run-list">
+      <article><h3>Select or create identity</h3><form action="/investigations/{{ investigation.id }}/browser/profile" method="post" class="details-form"><input type="hidden" name="csrf" value="{{ csrf }}"><label>Profile name<input name="profile_name" value="{{ browser_status.active_profile }}" maxlength="50" pattern="[A-Za-z0-9][A-Za-z0-9_.-]{0,49}" required list="browser-profile-names"></label><datalist id="browser-profile-names">{% for profile in browser_status.profiles %}<option value="{{ profile }}">{% endfor %}</datalist><button type="submit" {% if browser_status.active_job %}disabled{% endif %}>Activate identity</button></form></article>
+      <article><h3>Encrypted backup</h3><form action="/investigations/{{ investigation.id }}/browser/profile/backup" method="post" class="details-form"><input type="hidden" name="csrf" value="{{ csrf }}"><label>Profile<input name="profile_name" value="{{ browser_status.active_profile }}" maxlength="50" required></label><label>Backup password<input type="password" name="password" minlength="12" maxlength="256" required autocomplete="new-password"></label><button type="submit" {% if browser_status.active_job %}disabled{% endif %}>Download encrypted backup</button></form></article>
+      <article><h3>Restore encrypted backup</h3><form action="/investigations/{{ investigation.id }}/browser/profile/restore" method="post" enctype="multipart/form-data" class="details-form"><input type="hidden" name="csrf" value="{{ csrf }}"><label>Restore as profile<input name="profile_name" value="{{ browser_status.active_profile }}" maxlength="50" required></label><label>Encrypted .cbb file<input type="file" name="backup" accept=".cbb,application/octet-stream" required></label><label>Backup password<input type="password" name="password" minlength="12" maxlength="256" required autocomplete="current-password"></label><button type="submit" {% if browser_status.active_job %}disabled{% endif %}>Restore identity</button></form></article>
+    </div>
+  </details>
+</section>
+{% endif %}
+
+<section class="section-block" id="capture-run"{% if capture_run and capture_run.status == 'running' %} data-auto-reload="15"{% endif %}>
+  <div class="section-title"><div><p class="eyebrow">AUTOMATED RUN</p><h2>Capture found profiles</h2><p class="section-description">Opens each found profile page in the sock browser, one at a time and slowly, and reads the bio, counts, links and avatar from the page. It uses whatever sessions this browser identity is signed in to. It never signs in or solves a challenge: a platform that asks for either is dropped for the rest of the run.</p></div>{% if capture_run %}<span class="badge {{ 'running' if capture_run.status == 'running' else '' }}" title="State of the most recent profile capture run for this case.">{{ capture_run.status }}</span>{% endif %}</div>
+  <div class="panel">
+    {% if capture_run and capture_run.status == 'running' %}
+    <p>{{ capture_run.counts.total - capture_run.counts.get('pending', 0) - capture_run.counts.get('running', 0) }} of {{ capture_run.counts.total }} pages done. This page refreshes every 15 seconds.</p>
+    <form action="/investigations/{{ investigation.id }}/capture-run/cancel" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit" class="secondary" title="Stop after the page now being captured. Nothing further is opened.">Cancel run</button></form>
+    {% elif capture_candidates %}
+    <form action="/investigations/{{ investigation.id }}/capture-run" method="post" class="details-form">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <p>{{ capture_candidates|length }} found profile page{{ '' if capture_candidates|length == 1 else 's' }} not yet captured: {% for item in capture_candidates[:12] %}<code title="{{ item.url }}">{{ item.platform }} · {{ item.handle }}</code>{% if not loop.last %}, {% endif %}{% endfor %}{% if capture_candidates|length > 12 %} and {{ capture_candidates|length - 12 }} more{% endif %}.</p>
+      <label title="How many profile pages this run may open. Pages are ordered so consecutive requests go to different platforms.">Pages this run<input type="number" name="max_pages" min="1" max="{{ capture_run_defaults.max_pages_limit }}" value="{{ capture_run_defaults.max_pages }}"></label>
+      <label title="Shortest pause between two pages, in seconds.">Shortest pause (s)<input type="number" name="delay_min" min="10" max="600" value="{{ capture_run_defaults.delay_min }}"></label>
+      <label title="Longest pause between two pages, in seconds. Each pause is a random length between the two values.">Longest pause (s)<input type="number" name="delay_max" min="10" max="600" value="{{ capture_run_defaults.delay_max }}"></label>
+      <button type="submit" {% if not browser_status.available or browser_status.active_job or dork_run_active %}disabled{% endif %} title="Capture the listed profile pages in the background. One browser job runs at a time, so this waits while an automated dork run is active.">Start profile capture run</button>
+      {% if dork_run_active %}<small>An automated dork run is using the sock browser. Start this when it finishes.</small>{% endif %}
+    </form>
+    {% else %}
+    <p>No found profile pages are waiting. Pages appear here once a collector finds an account on a platform the sock browser can read, and leave the list once captured.</p>
+    {% endif %}
+    {% if capture_run %}
+    {% if capture_run.detail %}<p><strong>{{ capture_run.status|capitalize }}:</strong> {{ capture_run.detail }}</p>{% endif %}
+    {% if capture_run.cooled_platforms %}<p>Dropped for this run after a sign-in request or challenge: {{ capture_run.cooled_platforms|join(', ') }}. Capture those pages by hand below once you have dealt with it in the visible browser.</p>{% endif %}
+    <table><thead><tr><th>Platform</th><th>Account</th><th title="completed: a profile was read. no_profile: the page loaded but held no readable profile. challenged: a sign-in or challenge was shown. skipped: not attempted.">Outcome</th><th title="New findings created from this page. A page that enriched an existing finding shows 0 here and completed under Outcome.">New findings</th><th>Note</th></tr></thead><tbody>
+      {% for item in capture_run['items'] %}<tr><td>{{ item.platform }}</td><td><a href="{{ item.url }}" rel="noreferrer noopener" target="_blank">{{ item.handle }}</a></td><td>{{ item.status|replace('_', ' ') }}</td><td>{{ item.imported }}</td><td>{{ item.detail or '' }}</td></tr>{% endfor %}
+    </tbody></table>
+    {% endif %}
+  </div>
+</section>
+
+<section class="section-block">
+  <details class="panel run-details"><summary><span><strong>Collect one approved page</strong><small>Manual URL capture · social profile, location page or search result</small></span></summary>
+    <form action="/investigations/{{ investigation.id }}/browser/captures" method="post" class="details-form details-run-list">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label>Public HTTPS URL<input type="url" name="url" maxlength="2048" required placeholder="https://www.google.com/search?q=..."></label>
+      <button type="submit" {% if not browser_status.available or browser_status.active_job %}disabled{% endif %}>Capture through sock browser</button>
+      <small>One browser job runs at a time. Login walls and CAPTCHAs stay in the visible browser for explicit manual handling.</small>
+    </form>
+  </details>
+</section>
+
+<section class="section-block">
+  <div class="section-title"><div><p class="eyebrow">BROWSER PROVENANCE</p><h2>Capture history</h2></div><span class="badge">{{ browser_runs|length }} runs</span></div>
+  <div class="run-list">
+    {% for run in browser_runs %}
+    {% set handoff = browser_handoffs.get(run.id) %}
+    <article class="run browser-run" id="capture-{{ run.id }}">
+      <div><strong>{{ run.page_title or run.requested_url }}</strong><small>{{ run.collector_id|replace('_', ' ') }} · {{ run.session_name }}{% if handoff %} · blocked {{ handoff.engine|title }} search{% endif %}</small></div>
+      <span class="badge {{ 'running' if run.status == 'manual_action_required' else run.status }}">{{ run.status|replace('_', ' ') }}</span>
+      <div class="run-detail">
+        <span>{{ run.observed_at.strftime('%Y-%m-%d %H:%M:%S') if run.observed_at else run.created_at.strftime('%Y-%m-%d %H:%M:%S') }} UTC</span>
+        {% if run.browser_version %}<span>{{ run.browser_version }}</span>{% endif %}
+        {% if run.challenge_type %}<span class="warning-text">Challenge: {{ run.challenge_type }}</span>{% endif %}
+      </div>
+      {% if handoff %}<div class="run-detail blocked-search-detail"><strong>Exact search</strong><code>{{ handoff.query }}</code><span>{{ handoff.engine|title }} · {{ handoff.phase|default('warmup')|replace('_',' ') }}</span></div>{% endif %}
+      {% if run.error_message %}<p class="run-error">{{ run.error_message }}</p>{% endif %}
+      <div class="inline-form browser-run-actions">
+        {% if run.screenshot_reference %}<a class="button" href="/investigations/{{ investigation.id }}/browser/captures/{{ run.id }}/screenshot" target="_blank" rel="noopener">Evidence screenshot</a>{% endif %}
+        {% if run.status == 'manual_action_required' and browser_status.pending_job_id == run.id %}
+          <a class="button primary" href="{{ browser_desktop_url }}" target="_blank" rel="noopener noreferrer">Open held capture</a>
+          <form action="/investigations/{{ investigation.id }}/browser/captures/{{ run.id }}/resume" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">Resume after manual action</button></form>
+          <form action="/investigations/{{ investigation.id }}/browser/captures/{{ run.id }}/abandon" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit" class="secondary">Abandon</button></form>
+        {% elif run.status == 'manual_action_required' %}
+          <span class="warning-text">This page is no longer held by the agent.</span>
+          <form action="/investigations/{{ investigation.id }}/browser/captures/{{ run.id }}/abandon" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit" class="secondary">Mark abandoned</button></form>
+        {% elif handoff %}
+          <form action="/investigations/{{ investigation.id }}/searxng-handoff/{{ run.id }}/retry" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit" title="Rerun this exact held search on the same engine without rebuilding the query">Retry exact {{ handoff.engine|title }} search</button></form>
+        {% else %}
+          <form action="/investigations/{{ investigation.id }}/browser/captures/{{ run.id }}/retry" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit" class="secondary" title="Repeat this capture with the same URL as a new attempt">Run this capture again</button></form>
+        {% endif %}
+      </div>
+      <details><summary>Evidence provenance</summary><dl class="definition-list"><div><dt>Requested URL</dt><dd>{{ run.requested_url }}</dd></div>{% if run.final_url %}<div><dt>Final URL</dt><dd>{{ run.final_url }}</dd></div>{% endif %}{% if run.screenshot_sha256 %}<div><dt>Screenshot SHA-256</dt><dd><code>{{ run.screenshot_sha256 }}</code></dd></div>{% endif %}{% if run.html_sha256 %}<div><dt>HTML SHA-256</dt><dd><code>{{ run.html_sha256 }}</code></dd></div>{% endif %}{% if run.manifest_reference %}<div><dt>Manifest</dt><dd>{{ run.manifest_reference }}</dd></div>{% endif %}{% if run.manifest_sha256 %}<div><dt>Manifest SHA-256</dt><dd><code>{{ run.manifest_sha256 }}</code></dd></div>{% endif %}</dl></details>
+    </article>
+    {% else %}<div class="empty-state"><strong>No managed-browser captures</strong><p>The dedicated browser has not collected evidence for this investigation.</p></div>{% endfor %}
+  </div>
+</section>
+{% endblock %}

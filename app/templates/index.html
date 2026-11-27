@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · Corvus{% endblock %}
+{% block content %}
+<section class="dashboard-hero dashboard-hero-card">
+  <div class="dashboard-hero-copy">
+    <p class="eyebrow">LOCAL INVESTIGATION CONSOLE</p>
+    <h1>Investigation dashboard</h1>
+    <p>Start with one identifier. Corvus selects the compatible collectors, preserves provenance and keeps every case local.</p>
+    <div class="case-identity dashboard-version" aria-label="Running application version"><span>Version</span><code>{{ app_version }}</code>{% if app_build_commit %}<span>Commit</span><code>{{ app_build_commit[:8] }}</code>{% endif %}</div>
+    <div class="hero-assurances" aria-label="Workbench safeguards">
+      <span>Local stack</span><span>Isolated collectors</span><span>Case-scoped evidence</span>
+    </div>
+  </div>
+  <div class="dashboard-hero-actions">
+    <a class="button primary" href="#new-investigation">New investigation</a>
+    <a class="button" href="/maintenance/whats-new">What's new</a>
+    <a class="button" href="/maintenance/update">Corvus Update</a>
+  </div>
+</section>
+
+{% if deleted_count %}<section class="notice success"><strong>{{ deleted_count }} investigation{{ '' if deleted_count == 1 else 's' }} and associated case-scoped evidence deleted.</strong></section>{% endif %}
+
+<section class="metric-grid dashboard-metrics" aria-label="Dashboard summary">
+  <article class="metric-card accent"><span>Investigations</span><strong>{{ dashboard.investigation_count }}</strong><small>{{ dashboard.completed_investigations }} completed</small></article>
+  <article class="metric-card"><span>Active</span><strong>{{ dashboard.active_investigations }}</strong><small>Queued or running</small></article>
+  <article class="metric-card"><span>Positive findings</span><strong>{{ dashboard.positive_findings }}</strong><small>Found or likely</small></article>
+  <article class="metric-card"><span>Location evidence</span><strong>{{ dashboard.location_observations }}</strong><small>Dated observations</small></article>
+  <article class="metric-card danger-metric"><span>Failed runs</span><strong>{{ dashboard.failed_runs }}</strong><small>Failed, timed out or cancelled</small></article>
+</section>
+
+<div class="dashboard-layout">
+  <section id="new-investigation" class="panel workspace-panel">
+    <div class="panel-heading">
+      <div><p class="eyebrow">NEW CASE</p><h2>Who or what are you looking for?</h2></div>
+      <span class="step-label">One-step search</span>
+    </div>
+    <form action="/investigations" method="post" id="search-form">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="query_type_override" id="query-type-override" value="">
+      <label class="field-prominent">Search value<input required autofocus id="query" name="query" maxlength="320" placeholder="username, Firstname Lastname, +353 87 123 4567, email@example.org, or example.org"></label>
+      <fieldset class="segmented-fieldset"><legend>Search type</legend>
+        <div class="segmented-control">
+          {% for value in ["username", "name", "email", "phone", "domain"] %}<label><input type="radio" name="query_type" value="{{ value }}" {% if value == "username" %}checked{% endif %}><span>{{ value|title }}</span></label>{% endfor %}
+        </div>
+        <p id="detected" class="field-help">The type is detected automatically. You can override it here.</p>
+        <button type="button" id="reset-query-type" class="hidden" title="Discard the manual search-type choice and detect the type from the search value again">Use automatic type detection</button>
+      </fieldset>
+
+      <label title="Anything else you already know about the same subject. Each line is searched in the same case with the collectors that suit its type">Other known identifiers <span class="muted">optional, one per line</span><textarea name="additional_identifiers" rows="3" maxlength="3000" placeholder="jane.example@example.org&#10;Jane Example&#10;username: jane.example"></textarea></label>
+      <p class="field-help">Enter everything you have: usernames, email addresses, a full name, a phone number or a domain. The type is detected for each line; start a line with <code>username:</code>, <code>name:</code>, <code>email:</code>, <code>phone:</code> or <code>domain:</code> to force it.</p>
+      <p id="username-profile-help" class="field-help">Username searches combine broad collectors with exact public-profile checks on GitHub, GitLab, Hacker News and Bluesky, plus targeted social, community, gaming and creator web searches.</p>
+      <details class="advanced-options setup-options">
+        <summary>Collection and case options <span>Recommended collectors selected by default</span></summary>
+        <div class="advanced-body">
+          <div class="grid two">
+            <label>Investigation title <span class="muted">optional</span><input name="title" maxlength="200" placeholder="Defaults to the search value"></label>
+            <label>Case reference <span class="muted">optional</span><input name="case_reference" maxlength="100"></label>
+          </div>
+
+          <fieldset><legend>Collection tools</legend><p id="collection-help" class="field-help">Recommended compatible collectors are selected. Enable optional tools for a wider search, or deselect tools you want to skip.</p><p id="name-search-help" class="field-help hidden">Full-name investigations run a bounded Bing name search into the case report. The separate Google/Bing workbench remains available for deeper manual searches.</p><div id="tools" class="tool-grid">
+            {% for tool in tools %}<label class="tool" data-types="{{ tool.types|join(',') }}" data-default-selected="{{ 'true' if tool.default_selected and tool.id != 'metasearch2' else 'false' }}"><span class="tool-name"><input type="checkbox" name="tools" value="{{ tool.id }}"{% if tool.default_selected and tool.id != 'metasearch2' %} checked{% endif %}><span><strong>{{ tool.name }}</strong>{% if tool.recovery %}<em>Account-recovery endpoint</em>{% endif %}</span></span><span class="timeout-field">Timeout <input class="timeout" type="number" name="timeout_{{ tool.id }}" min="{{ min_tool_timeout }}" max="{{ max_tool_timeout }}" value="{{ tool.timeout }}"> s</span></label>{% endfor %}
+          </div></fieldset>
+
+          <div class="grid two">
+            <label>Proxy<select name="proxy"><option value="">Disabled</option><option value="http_proxy">Configured HTTP</option><option value="https_proxy">Configured HTTPS</option><option value="socks_proxy">Configured SOCKS</option><option value="tor_proxy">Configured Tor</option></select></label>
+            <label>Tags <span class="muted">comma separated</span><input name="tags" maxlength="400"></label>
+          </div>
+          <label id="auto-pivot-option" class="inline-choice hidden" title="Username and email cases: follow corroborated usernames and independently observed public emails for at most two hops"><input type="checkbox" name="auto_follow_username_pivots" checked> Automatically follow corroborated username/email identity pivots</label>
+          <p id="auto-pivot-help" class="field-help hidden">Runs a bounded two-hop identity expansion: corroborated usernames go through enabled username collectors and independently observed public emails through email-capable collectors, with every hop retaining provenance.</p>
+          <label id="extended-username-option" class="inline-choice" title="Username cases: add the Maigret all-sites and Naminter/WhatsMyName sweep. Slower, with more unverified leads"><input type="checkbox" name="extended_username_search"> Extended username search</label>
+          <p id="extended-username-help" class="field-help warning-text">Runs the broader Maigret all-sites and Naminter/WhatsMyName sweep. Use it when the fast standard search is too sparse or a deeper search is warranted. Corvus still applies normal evidence-quality controls.</p>
+          <label>Investigator notes<textarea name="notes" maxlength="10000" rows="4"></textarea></label>
+        </div>
+      </details>
+      <div class="form-actions"><button class="primary prominent-action" type="submit">Start full investigation</button><small>Each collector runs independently and records its source and provenance.</small></div>
+    </form>
+  </section>
+
+  <aside class="recent-cases">
+    <div class="section-title compact"><div><p class="eyebrow">CASELOAD</p><h2>Recent investigations</h2></div><span class="count-label">{{ investigations|length }}</span></div>
+    {% if investigations %}
+    <form action="/investigations/delete-selected" method="post" id="bulk-delete-form" class="bulk-delete-form">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <div class="bulk-case-toolbar">
+        <label class="inline-choice" title="Select every finished case; queued and running cases are skipped"><input type="checkbox" id="select-all-investigations"> Select all finished</label>
+        <span id="selected-investigation-count" class="muted">0 selected</span>
+        <button type="submit" formaction="/compare-cases" formnovalidate data-compare-selected disabled title="Compare 2–5 selected finished cases for exact shared URLs, account IDs, public emails, signing keys and image hashes. No new collection runs">Compare selected cases</button>
+        <small>Select 2–5 finished cases to compare shared evidence.</small>
+        <details class="bulk-delete-confirmation">
+          <summary class="button danger-outline">Delete selected</summary>
+          <div class="bulk-delete-popover">
+            <strong>Permanent local deletion</strong>
+            <p>This removes the selected database records, raw collector output and case-scoped browser evidence. Active investigations must be cancelled first.</p>
+            <label>Type DELETE SELECTED<input name="confirm" autocomplete="off" data-delete-confirmation></label>
+            <button class="danger" type="submit" data-delete-selected disabled>Delete permanently</button>
+          </div>
+        </details>
+      </div>
+      <div class="case-list">
+        {% for item in investigations %}
+        {% set item_summary = investigation_summaries[item.id] %}
+        <article class="case-select-row">
+          <label class="case-select-control" title="{% if item.status in ['queued', 'running'] %}Wait for this investigation to finish{% else %}Select {{ item.title }} for comparison or deletion{% endif %}"><input type="checkbox" name="investigation_ids" value="{{ item.id }}" {% if item.status in ['queued', 'running'] %}disabled{% endif %} aria-label="Select {{ item.title }} for comparison or deletion"></label>
+          <a class="case-card" href="/investigations/{{ item.id }}">
+            <div class="case-card-title"><strong>{{ item.title }}</strong><span class="badge {{ item.status }}">{{ item.status }}</span></div>
+            <div class="case-query">{{ item.query }}</div>
+            <div class="case-meta"><span>{{ item.query_type|title }}</span>{% if item.case_reference %}<span>Case {{ item.case_reference }}</span>{% endif %}<span>{{ item.created_at.strftime('%Y-%m-%d %H:%M') }} UTC</span></div>
+            <div class="case-stats"><span><strong>{{ item_summary.positive_findings }}</strong> positive</span><span><strong>{{ item_summary.platform_count }}</strong> platforms</span><span><strong>{{ item_summary.location_observation_count }}</strong> locations</span></div>
+            {% if item_summary.platform_summary %}<div class="case-platform-icons">{% for p in item_summary.platform_summary[:8] %}{% set icon = platform_icon_svg(p.platform) %}{% if icon %}<span title="{{ p.platform }}">{{ icon|safe }}</span>{% endif %}{% endfor %}</div>{% endif %}
+          </a>
+        </article>
+        {% endfor %}
+      </div>
+    </form>
+    {% else %}
+    <div class="empty-state"><strong>No investigations yet</strong><p>Create the first case using the investigation form.</p></div>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

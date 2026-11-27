@@ -1,0 +1,346 @@
+{
+  "CVE-2025-69720": {
+    "expires": "2026-12-27",
+    "images": [
+      "corvus-app:latest",
+      "corvus-blackbird:latest",
+      "corvus-gallery-dl:latest",
+      "corvus-holehe:latest",
+      "corvus-instaloader:latest",
+      "corvus-maigret:latest",
+      "corvus-naminter:latest",
+      "corvus-nexfil:latest",
+      "corvus-sherlock:latest",
+      "corvus-social-analyzer:latest",
+      "corvus-subfinder:latest",
+      "corvus-theharvester:latest",
+      "corvus-tor:latest",
+      "corvus-yt-dlp:latest"
+    ],
+    "packages": {
+      "libncursesw6": "6.5+20250216-2",
+      "libtinfo6": "6.5+20250216-2",
+      "ncurses-base": "6.5+20250216-2",
+      "ncurses-bin": "6.5+20250216-2"
+    },
+    "reason": "The affected program is infocmp. No runtime command accepts user-controlled terminfo or invokes infocmp."
+  },
+  "CVE-2026-107494": {
+    "expires": "2026-12-27",
+    "images": [
+      "corvus-app:latest",
+      "corvus-blackbird:latest",
+      "corvus-gallery-dl:latest",
+      "corvus-holehe:latest",
+      "corvus-instaloader:latest",
+      "corvus-maigret:latest",
+      "corvus-metasearch2:latest",
+      "corvus-naminter:latest",
+      "corvus-nexfil:latest",
+      "corvus-sherlock:latest",
+      "corvus-social-analyzer:latest",
+      "corvus-subfinder:latest",
+      "corvus-theharvester:latest",
+      "corvus-tor:latest",
+      "corvus-yt-dlp:latest"
+    ],
+    "packages": {
+      "libssl3t64": "3.5.9-1~deb13u1",
+      "openssl": "3.5.9-1~deb13u1",
+      "openssl-provider-legacy": "3.5.9-1~deb13u1"
+    },
+    "reason": "The shipped services do not negotiate QUIC with Debian OpenSSL. The collectors that use bundled curl_cffi use BoringSSL."
+  },
+  "CVE-2026-119373": {
+    "expires": "2026-12-27",
+    "images": [
+      "corvus-app:latest",
+      "corvus-blackbird:latest",
+      "corvus-gallery-dl:latest",
+      "corvus-holehe:latest",
+      "corvus-instaloader:latest",
+      "corvus-maigret:latest",
+      "corvus-naminter:latest",
+      "corvus-nexfil:latest",
+      "corvus-sherlock:latest",
+      "corvus-social-analyzer:latest",
+      "corvus-subfinder:latest",
+      "corvus-theharvester:latest",
+      "corvus-tor:latest",
+      "corvus-yt-dlp:latest"
+    ],
+    "packages": {
+      "libsqlite3-0": "3.46.1-7+deb13u2"
+    },
+    "reason": "Corvus does not create or query FTS5 tables. SQLite investigation imports accept only ordinary tables."
+  },
+  "CVE-2026-119374": {
+    "expires": "2026-12-27",
+    "images": [
+      "corvus-app:latest",
+      "corvus-blackbird:latest",
+      "corvus-gallery-dl:latest",
+      "corvus-holehe:latest",
+      "corvus-instaloader:latest",
+      "corvus-maigret:latest",
+      "corvus-naminter:latest",
+      "corvus-nexfil:latest",
+      "corvus-sherlock:latest",
+      "corvus-social-analyzer:latest",
+      "corvus-subfinder:latest",
+      "corvus-theharvester:latest",
+      "corvus-tor:latest",
+      "corvus-yt-dlp:latest"
+    ],
+    "packages": {
+      "libsqlite3-0": "3.46.1-7+deb13u2"
+    },
+    "reason": "Imported databases are read-only and only ordinary tables are selected. Corvus does not delete from FTS5 tables."
+  },
+  "CVE-2026-119379": {
+    "expires": "2026-12-27",
+    "images": [
+      "corvus-app:latest",
+      "corvus-blackbird:latest",
+      "corvus-gallery-dl:latest",
+      "corvus-holehe:latest",
+      "corvus-instaloader:latest",
+      "corvus-maigret:latest",
+      "corvus-naminter:latest",
+      "corvus-nexfil:latest",
+      "corvus-sherlock:latest",
+      "corvus-social-analyzer:latest",
+      "corvus-subfinder:latest",
+      "corvus-theharvester:latest",
+      "corvus-tor:latest",
+      "corvus-yt-dlp:latest"
+    ],
+    "packages": {
+      "libsqlite3-0": "3.46.1-7+deb13u2"
+    },
+    "reason": "Corvus does not use SQLite session or changeset APIs. The local records and imports are accessed through SQL."
+  },
+  "CVE-2026-124709": {
+    "expires": "2026-12-27",
+    "images": [
+      "corvus-app:latest",
+      "corvus-blackbird:latest",
+      "corvus-gallery-dl:latest",
+      "corvus-holehe:latest",
+      "corvus-instaloader:latest",
+      "corvus-maigret:latest",
+      "corvus-metasearch2:latest",
+      "corvus-naminter:latest",
+      "corvus-nexfil:latest",
+      "corvus-sherlock:latest",
+      "corvus-social-analyzer:latest",
+      "corvus-subfinder:latest",
+      "corvus-theharvester:latest",
+      "corvus-tor:latest",
+      "corvus-yt-dlp:latest"
+    ],
+    "packages": {
+      "libssl3t64": "3.5.9-1~deb13u1",
+      "openssl": "3.5.9-1~deb13u1",
+      "openssl-provider-legacy": "3.5.9-1~deb13u1"
+    },
+    "reason": "The shipped services do not expose an OpenSSL QUIC server. HTTP listeners are TCP."
+  },
+  "CVE-2026-16742": {
+    "expires": "2026-12-27",
+    "images": [
+      "corvus-app:latest",
+      "corvus-blackbird:latest",
+      "corvus-gallery-dl:latest",
+      "corvus-holehe:latest",
+      "corvus-instaloader:latest",
+      "corvus-maigret:latest",
+      "corvus-naminter:latest",
+      "corvus-nexfil:latest",
+      "corvus-sherlock:latest",
+      "corvus-social-analyzer:latest",
+      "corvus-subfinder:latest",
+      "corvus-theharvester:latest",
+      "corvus-tor:latest",
+      "corvus-yt-dlp:latest"
+    ],
+    "packages": {
+      "libsystemd0": "257.13-1~deb13u1",
+      "libudev1": "257.13-1~deb13u1"
+    },
+    "reason": "systemd-homed is absent from the application images and is not a service in the Compose stack."
+  },
+  "CVE-2026-54369": {
+    "expires": "2026-12-27",
+    "images": [
+      "corvus-app:latest",
+      "corvus-blackbird:latest",
+      "corvus-gallery-dl:latest",
+      "corvus-holehe:latest",
+      "corvus-instaloader:latest",
+      "corvus-maigret:latest",
+      "corvus-naminter:latest",
+      "corvus-nexfil:latest",
+      "corvus-sherlock:latest",
+      "corvus-social-analyzer:latest",
+      "corvus-subfinder:latest",
+      "corvus-theharvester:latest",
+      "corvus-tor:latest",
+      "corvus-yt-dlp:latest"
+    ],
+    "packages": {
+      "libacl1": "2.3.2-2+b1"
+    },
+    "reason": "No privileged ACL operation processes untrusted paths. The services use unprivileged accounts and no-new-privileges."
+  },
+  "CVE-2026-76642": {
+    "expires": "2026-12-27",
+    "images": [
+      "corvus-app:latest",
+      "corvus-blackbird:latest",
+      "corvus-gallery-dl:latest",
+      "corvus-holehe:latest",
+      "corvus-instaloader:latest",
+      "corvus-maigret:latest",
+      "corvus-naminter:latest",
+      "corvus-nexfil:latest",
+      "corvus-sherlock:latest",
+      "corvus-social-analyzer:latest",
+      "corvus-subfinder:latest",
+      "corvus-theharvester:latest",
+      "corvus-tor:latest",
+      "corvus-yt-dlp:latest"
+    ],
+    "packages": {
+      "bsdutils": "1:2.41.5-0+deb13u1",
+      "libblkid1": "2.41.5-0+deb13u1",
+      "liblastlog2-2": "2.41.5-0+deb13u1",
+      "libmount1": "2.41.5-0+deb13u1",
+      "libsmartcols1": "2.41.5-0+deb13u1",
+      "libuuid1": "2.41.5-0+deb13u1",
+      "login": "1:4.16.0-2+really2.41.5-0+deb13u1",
+      "mount": "2.41.5-0+deb13u1",
+      "util-linux": "2.41.5-0+deb13u1"
+    },
+    "reason": "The services run without CAP_SYS_ADMIN under no-new-privileges and do not run mount helpers."
+  },
+  "CVE-2026-78408": {
+    "expires": "2026-12-27",
+    "images": [
+      "corvus-app:latest",
+      "corvus-blackbird:latest",
+      "corvus-gallery-dl:latest",
+      "corvus-holehe:latest",
+      "corvus-instaloader:latest",
+      "corvus-maigret:latest",
+      "corvus-naminter:latest",
+      "corvus-nexfil:latest",
+      "corvus-sherlock:latest",
+      "corvus-social-analyzer:latest",
+      "corvus-subfinder:latest",
+      "corvus-theharvester:latest",
+      "corvus-tor:latest",
+      "corvus-yt-dlp:latest"
+    ],
+    "packages": {
+      "bsdutils": "1:2.41.5-0+deb13u1",
+      "libblkid1": "2.41.5-0+deb13u1",
+      "liblastlog2-2": "2.41.5-0+deb13u1",
+      "libmount1": "2.41.5-0+deb13u1",
+      "libsmartcols1": "2.41.5-0+deb13u1",
+      "libuuid1": "2.41.5-0+deb13u1",
+      "login": "1:4.16.0-2+really2.41.5-0+deb13u1",
+      "mount": "2.41.5-0+deb13u1",
+      "util-linux": "2.41.5-0+deb13u1"
+    },
+    "reason": "Corvus does not run nsenter or join cgroups after changing credentials. Containers have no Docker socket or host PID namespace."
+  },
+  "CVE-2026-78409": {
+    "expires": "2026-12-27",
+    "images": [
+      "corvus-app:latest",
+      "corvus-blackbird:latest",
+      "corvus-gallery-dl:latest",
+      "corvus-holehe:latest",
+      "corvus-instaloader:latest",
+      "corvus-maigret:latest",
+      "corvus-naminter:latest",
+      "corvus-nexfil:latest",
+      "corvus-sherlock:latest",
+      "corvus-social-analyzer:latest",
+      "corvus-subfinder:latest",
+      "corvus-theharvester:latest",
+      "corvus-tor:latest",
+      "corvus-yt-dlp:latest"
+    ],
+    "packages": {
+      "bsdutils": "1:2.41.5-0+deb13u1",
+      "libblkid1": "2.41.5-0+deb13u1",
+      "liblastlog2-2": "2.41.5-0+deb13u1",
+      "libmount1": "2.41.5-0+deb13u1",
+      "libsmartcols1": "2.41.5-0+deb13u1",
+      "libuuid1": "2.41.5-0+deb13u1",
+      "login": "1:4.16.0-2+really2.41.5-0+deb13u1",
+      "mount": "2.41.5-0+deb13u1",
+      "util-linux": "2.41.5-0+deb13u1"
+    },
+    "reason": "No fstab-authorized user mounts are configured or processed by Corvus. The services cannot mount filesystems."
+  },
+  "CVE-2026-78410": {
+    "expires": "2026-12-27",
+    "images": [
+      "corvus-app:latest",
+      "corvus-blackbird:latest",
+      "corvus-gallery-dl:latest",
+      "corvus-holehe:latest",
+      "corvus-instaloader:latest",
+      "corvus-maigret:latest",
+      "corvus-naminter:latest",
+      "corvus-nexfil:latest",
+      "corvus-sherlock:latest",
+      "corvus-social-analyzer:latest",
+      "corvus-subfinder:latest",
+      "corvus-theharvester:latest",
+      "corvus-tor:latest",
+      "corvus-yt-dlp:latest"
+    ],
+    "packages": {
+      "bsdutils": "1:2.41.5-0+deb13u1",
+      "libblkid1": "2.41.5-0+deb13u1",
+      "liblastlog2-2": "2.41.5-0+deb13u1",
+      "libmount1": "2.41.5-0+deb13u1",
+      "libsmartcols1": "2.41.5-0+deb13u1",
+      "libuuid1": "2.41.5-0+deb13u1",
+      "login": "1:4.16.0-2+really2.41.5-0+deb13u1",
+      "mount": "2.41.5-0+deb13u1",
+      "util-linux": "2.41.5-0+deb13u1"
+    },
+    "reason": "Corvus does not expose fstab-authorized SUID mounts. Container services lack CAP_SYS_ADMIN and no-new-privileges prevents SUID elevation."
+  },
+  "CVE-2026-9538": {
+    "expires": "2026-12-27",
+    "images": [
+      "corvus-app:latest",
+      "corvus-blackbird:latest",
+      "corvus-gallery-dl:latest",
+      "corvus-holehe:latest",
+      "corvus-instaloader:latest",
+      "corvus-maigret:latest",
+      "corvus-naminter:latest",
+      "corvus-nexfil:latest",
+      "corvus-sherlock:latest",
+      "corvus-social-analyzer:latest",
+      "corvus-subfinder:latest",
+      "corvus-theharvester:latest",
+      "corvus-tor:latest",
+      "corvus-yt-dlp:latest"
+    ],
+    "packages": {
+      "libperl5.40": "5.40.1-6+deb13u1",
+      "perl": "5.40.1-6+deb13u1",
+      "perl-base": "5.40.1-6+deb13u1",
+      "perl-modules-5.40": "5.40.1-6+deb13u1"
+    },
+    "reason": "No Corvus runtime command reads untrusted tar archives using Perl Archive::Tar. Corvus profile imports use bounded Python ZIP processing."
+  }
+}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Raw JSON · {{ investigation.title }} · Corvus{% endblock %}
+{% block content %}
+<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Dashboard</a><span>/</span><a href="/investigations/{{ investigation.id }}">{{ investigation.title }}</a><span>/</span><span>Raw JSON</span></nav>
+
+<section class="case-header compact">
+  <div class="case-heading">
+    <div><p class="eyebrow">COLLECTOR EVIDENCE</p><h1>Raw JSON viewer</h1><p>Inspect the exact JSON artifacts retained by each collector. This view is read-only and case-scoped.</p></div>
+    <div class="case-actions"><a class="button" href="/investigations/{{ investigation.id }}">Back to investigation</a>{% if selected_run %}<a class="button" href="/investigations/{{ investigation.id }}/runs/{{ selected_run.id }}/log">Execution log</a><a class="button" href="/investigations/{{ investigation.id }}/raw-json">Show all collector JSON</a>{% endif %}{% if selected %}<a class="button primary" href="/investigations/{{ investigation.id }}/raw-json?run_id={{ selected.run_id }}&artifact={{ selected.relative_path|urlencode }}&download=true">Download selected JSON</a>{% endif %}</div>
+  </div>
+</section>
+
+<div class="raw-json-layout">
+  <aside class="panel raw-json-index">
+    <div class="panel-heading"><div><p class="eyebrow">ARTIFACT INDEX</p><h2>{% if selected_run %}{{ selected_run.display_name }} files{% else %}Collector files{% endif %}</h2></div><span class="badge">{{ artifacts|length }}{% if selected_run and all_artifact_count != artifacts|length %} / {{ all_artifact_count }}{% endif %}</span></div>
+    <p class="muted">{% if selected_run %}Showing only artifacts belonging to this exact tool run. {% endif %}Files larger than 5 MiB and paths outside this investigation are never exposed.</p>
+    <div class="raw-json-files">
+      {% for item in artifacts %}
+      <a class="raw-json-file{% if selected and selected.run_id == item.run_id and selected.relative_path == item.relative_path %} active{% endif %}" href="/investigations/{{ investigation.id }}/raw-json?run_id={{ item.run_id }}&artifact={{ item.relative_path|urlencode }}">
+        <strong>{{ item.filename }}</strong>
+        <span>{{ item.display_name }} · {{ item.category }}</span>
+        <small>{{ item.size_bytes }} bytes</small>
+      </a>
+      {% else %}<div class="empty-state"><strong>No retained JSON</strong><p>{% if selected_run %}This {{ selected_run.display_name }} run did not retain a JSON artifact. It will not fall back to another collector's evidence.{% else %}No collector JSON artifacts exist for this investigation yet.{% endif %}</p></div>{% endfor %}
+    </div>
+  </aside>
+
+  <section class="panel raw-json-viewer">
+    {% if error %}<div class="callout danger"><strong>{% if selected_run and not selected %}No JSON for this run{% else %}Unable to open artifact{% endif %}</strong><p>{{ error }}</p>{% if selected_run %}<p><strong>{{ selected_run.display_name }}</strong> · {{ selected_run.status|replace('_', ' ') }} · {{ selected_run.timeout_seconds }}s limit</p>{% endif %}</div>{% elif selected and json_text %}
+    <div class="panel-heading raw-json-heading"><div><p class="eyebrow">{{ selected.tool_id|upper }}</p><h2>{{ selected.relative_path }}</h2><p>{{ selected.category }} · {{ selected.size_bytes }} bytes</p></div><div class="json-toolbar"><button type="button" data-copy-json-target="raw-json-document">Copy JSON</button><button type="button" data-toggle-json-wrap-target="raw-json-document">Wrap lines</button></div></div>
+    <div class="warning"><strong>Raw collector output</strong><p>This may contain public identifiers, platform metadata and technical request details that are intentionally omitted from the concise report.</p></div>
+    <div id="raw-json-document" class="raw-json-document"><pre class="json-code raw-json-code" data-json-syntax><code>{{ json_text }}</code></pre></div>
+    {% else %}<div class="empty-state"><strong>Select a JSON artifact</strong><p>Choose a collector file to inspect its exact retained content.</p></div>{% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+{% block title %}Settings · Corvus{% endblock %}
+{% block content %}
+<section class="settings-hero panel">
+  <div>
+    <p class="eyebrow">WORKBENCH SETTINGS</p>
+    <h1>Collector timeouts</h1>
+    <p>Set the default maximum runtime for each OSINT collector. New investigations and automatic username pivots use these values; an individual case can still override them before it starts.</p>
+  </div>
+  <a class="button" href="/">Back to dashboard</a>
+</section>
+
+{% if saved %}<div class="notice success" role="status"><strong>Timeout defaults saved.</strong> New collector runs will use the updated values.</div>{% endif %}
+{% if reset %}<div class="notice success" role="status"><strong>Timeout defaults reset.</strong> Built-in collector values are active again.</div>{% endif %}
+{% if wmn_refreshed %}<div class="notice success" role="status"><strong>WhatsMyName coverage refreshed.</strong> {{ wmn_added }} added, {{ wmn_removed }} removed and {{ wmn_changed }} changed sites compared with the pinned release dataset.</div>{% endif %}
+{% if searxng_saved %}<div class="notice success" role="status"><strong>SearXNG engines saved.</strong> New name-search runs will use the selected engines.</div>{% endif %}
+{% if searxng_reset %}<div class="notice success" role="status"><strong>SearXNG engines reset.</strong> The safe keyless defaults are active.</div>{% endif %}
+{% if metasearch2_saved %}<div class="notice success" role="status"><strong>Metasearch2 engines saved.</strong> New web-search runs will use the selected engines.</div>{% endif %}
+{% if metasearch2_reset %}<div class="notice success" role="status"><strong>Metasearch2 engines reset.</strong> The recommended defaults are active.</div>{% endif %}
+{% if phone_presence_saved %}<div class="notice success" role="status"><strong>Phone-presence platforms saved.</strong> New Phone Number Presence runs will only contact the selected platforms.</div>{% endif %}
+{% if phone_presence_reset %}<div class="notice success" role="status"><strong>Phone-presence platforms reset.</strong> Only Snapchat is active again.</div>{% endif %}
+{% if runtime_saved %}<div class="notice success" role="status"><strong>Runtime options saved.</strong> New runs will use the updated behaviour.</div>{% endif %}
+{% if runtime_reset %}<div class="notice success" role="status"><strong>Runtime options reset.</strong> Recommended defaults are active.</div>{% endif %}
+{% if request.query_params.get('steam_saved') == '1' %}<div class="notice success" role="status"><strong>Steam Web API key saved.</strong> Steam Public Profile is available for new username investigations.</div>{% endif %}
+{% if request.query_params.get('steam_cleared') == '1' %}<div class="notice success" role="status"><strong>Steam Web API key cleared.</strong> Steam Public Profile is disabled until a key is configured.</div>{% endif %}
+{% if request.query_params.get('urlscan_saved') == '1' %}<div class="notice success" role="status"><strong>URLScan API key saved.</strong> Historical URL discovery is available as a manual domain collector.</div>{% endif %}
+{% if request.query_params.get('urlscan_cleared') == '1' %}<div class="notice success" role="status"><strong>URLScan API key cleared.</strong> URLScan historical discovery is disabled until a key is configured.</div>{% endif %}
+{% if request.query_params.get('companies_house_saved') == '1' %}<div class="notice success" role="status"><strong>Companies House API key saved.</strong> The manual UK company/officer collector is available for name investigations.</div>{% endif %}
+{% if request.query_params.get('companies_house_cleared') == '1' %}<div class="notice success" role="status"><strong>Companies House API key cleared.</strong> The native Companies House collector is disabled until a key is configured.</div>{% endif %}
+{% if request.query_params.get('abuseipdb_saved') == '1' %}<div class="notice success" role="status"><strong>AbuseIPDB API key saved.</strong> Passive IP reputation is available from case infrastructure enrichment.</div>{% endif %}
+{% if request.query_params.get('abuseipdb_cleared') == '1' %}<div class="notice success" role="status"><strong>AbuseIPDB API key cleared.</strong> AbuseIPDB reputation checks are disabled until a key is configured.</div>{% endif %}
+{% if request.query_params.get('openphish_saved') == '1' %}<div class="notice success" role="status"><strong>OpenPhish feed saved.</strong> The authorised-feed domain correlation collector is available.</div>{% endif %}
+{% if request.query_params.get('openphish_cleared') == '1' %}<div class="notice success" role="status"><strong>OpenPhish feed cleared.</strong> OpenPhish correlation is disabled until an authorised feed is configured.</div>{% endif %}
+
+<section class="panel settings-panel">
+  <form action="/settings/tool-timeouts" method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="section-title">
+      <div><p class="eyebrow">RUNTIME LIMITS</p><h2>Per-collector defaults</h2></div>
+      <span class="count-label">{{ tools|length }} collectors</span>
+    </div>
+    <p class="field-help">Allowed range: {{ min_timeout }}–{{ max_timeout }} seconds. A timed-out collector stops independently; other collectors continue.</p>
+
+    <div class="timeout-settings-grid">
+      {% for tool in tools %}
+      <label class="timeout-setting-card">
+        <span class="timeout-setting-copy">
+          <strong>{{ tool.name }}</strong>
+          <small>{{ tool.types|join(' · ')|title }}</small>
+          <span>Built-in default: {{ tool.built_in_timeout }} seconds</span>
+        </span>
+        <span class="timeout-setting-input">
+          <input required type="number" name="timeout_{{ tool.id }}" min="{{ min_timeout }}" max="{{ max_timeout }}" step="1" value="{{ tool.timeout }}" aria-label="{{ tool.name }} timeout in seconds">
+          <span>seconds</span>
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+
+    <div class="settings-actions">
+      <button class="primary" type="submit" name="action" value="save">Save timeout defaults</button>
+      <button class="button" type="submit" name="action" value="reset" formnovalidate>Reset built-in defaults</button>
+      <small>Changes affect new runs only. Existing queued, running and completed tool runs retain their recorded timeout.</small>
+    </div>
+  </form>
+</section>
+
+<section class="panel settings-panel">
+  <form action="/settings/searxng-engines" method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="section-title">
+      <div><p class="eyebrow">NAME SEARCH</p><h2>SearXNG engines</h2></div>
+      <span class="badge {{ 'found' if searxng_status == 'ready' else 'unknown' }}">{{ searxng_status }}</span>
+    </div>
+    <p class="field-help">Choose which locally hosted, keyless engines are queried by the SearXNG name and username collector. One engine failing, rate-limiting or presenting a CAPTCHA remains visible in the run diagnostics without failing the entire collector.</p>
+    <div class="timeout-settings-grid">
+      {% for engine in searxng_engines %}
+      <label class="timeout-setting-card">
+        <span class="timeout-setting-copy">
+          <strong>{{ engine.name }}</strong>
+          <small>{{ engine.description }}</small>
+          <span>{% if engine.available is sameas true %}Available in local SearXNG{% elif engine.available is sameas false %}Not present in local SearXNG configuration{% else %}Availability unknown while SearXNG is offline{% endif %}</span>
+        </span>
+        <span class="timeout-setting-input">
+          <input type="checkbox" name="engine" value="{{ engine.id }}" {% if engine.active %}checked{% endif %} {% if engine.available is sameas false %}disabled{% endif %} aria-label="Enable {{ engine.name }}">
+          <span>{% if engine.available is sameas false %}unavailable{% else %}enabled{% endif %}</span>
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+    <div class="settings-actions">
+      <button class="primary" type="submit" name="action" value="save">Save engine selection</button>
+      <button class="button" type="submit" name="action" value="reset">Reset safe defaults</button>
+      <small>Engine selection is recorded in every SearXNG raw result and query record for exact provenance.</small>
+    </div>
+  </form>
+</section>
+
+<section class="panel settings-panel">
+  <form action="/settings/metasearch2-engines" method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="section-title">
+      <div><p class="eyebrow">WEB DISCOVERY</p><h2>Metasearch2 engines</h2></div>
+      <span class="count-label">{{ metasearch2_engines|length }} engines</span>
+    </div>
+    <p class="field-help">Choose which metasearch2 engines are queried for Corvus web discovery. The selection is enforced per request and repeated in the raw run metadata.</p>
+    <div class="timeout-settings-grid">
+      {% for engine in metasearch2_engines %}
+      <label class="timeout-setting-card">
+        <span class="timeout-setting-copy">
+          <strong>{{ engine.name }}</strong>
+          <small>{{ engine.description }}</small>
+        </span>
+        <span class="timeout-setting-input">
+          <input type="checkbox" name="engine" value="{{ engine.id }}" {% if engine.active %}checked{% endif %} aria-label="Enable {{ engine.name }}">
+          <span>enabled</span>
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+    <div class="settings-actions">
+      <button class="primary" type="submit" name="action" value="save">Save engine selection</button>
+      <button class="button" type="submit" name="action" value="reset">Reset recommended defaults</button>
+      <small>Per-result engine provenance is retained in raw output and reports.</small>
+    </div>
+  </form>
+</section>
+
+<section class="panel settings-panel">
+  <form action="/settings/phone-presence-platforms" method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="section-title">
+      <div><p class="eyebrow">PHONE</p><h2>Phone-presence platforms</h2></div>
+      <span class="count-label">{{ phone_presence_platforms|length }} platforms</span>
+    </div>
+    <p class="field-help">Choose which platforms the Phone Number Presence collector contacts. Snapchat is on by default; Instagram and Amazon are independent reimplementations of higher-risk techniques and stay off until switched on here. See each platform's note before enabling it.</p>
+    <div class="timeout-settings-grid">
+      {% for platform in phone_presence_platforms %}
+      <label class="timeout-setting-card">
+        <span class="timeout-setting-copy">
+          <strong>{{ platform.name }}</strong>
+          <small>{{ platform.description }}</small>
+          <span>{{ platform.risk_note }}</span>
+        </span>
+        <span class="timeout-setting-input">
+          <input type="checkbox" name="platform" value="{{ platform.id }}" {% if platform.active %}checked{% endif %} aria-label="Enable {{ platform.name }} phone-presence checks">
+          <span>enabled</span>
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+    <div class="settings-actions">
+      <button class="primary" type="submit" name="action" value="save">Save platform selection</button>
+      <button class="button" type="submit" name="action" value="reset">Reset to Snapchat only</button>
+      <small>The collector itself remains manual/non-default per investigation; this only controls which platforms it may contact when selected.</small>
+    </div>
+  </form>
+</section>
+
+<section class="panel settings-panel">
+  <form action="/settings/runtime-options" method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="section-title">
+      <div><p class="eyebrow">COLLECTION BEHAVIOUR</p><h2>Runtime options</h2></div>
+    </div>
+    <p class="field-help">Operational controls that affect multiple collectors. Changes apply to new work only.</p>
+    <div class="timeout-settings-grid">
+      <label class="timeout-setting-card">
+        <span class="timeout-setting-copy">
+          <strong>Share authenticated browser sessions</strong>
+          <small>Allow supported collectors such as Instaloader and Maigret to use the authenticated sock-browser session when available.</small>
+        </span>
+        <span class="timeout-setting-input"><input type="checkbox" name="browser_share_sessions" {% if runtime_options.browser_share_sessions %}checked{% endif %}><span>enabled</span></span>
+      </label>
+      <label class="timeout-setting-card">
+        <span class="timeout-setting-copy">
+          <strong>Automatic Wayback lookup</strong>
+          <small>Check retained public profile URLs against the Internet Archive after collection completes.</small>
+        </span>
+        <span class="timeout-setting-input"><input type="checkbox" name="automatic_wayback" {% if runtime_options.automatic_wayback %}checked{% endif %}><span>enabled</span></span>
+      </label>
+      <label class="timeout-setting-card">
+        <span class="timeout-setting-copy">
+          <strong>Automatic dork run</strong>
+          <small>When a new case's collectors finish, start the paced social-platform search run through the sock browser with its default engines, query limit and pauses. Needs the managed browser; a challenge is never solved automatically.</small>
+        </span>
+        <span class="timeout-setting-input"><input type="checkbox" name="automatic_dork_run" {% if runtime_options.automatic_dork_run %}checked{% endif %}><span>enabled</span></span>
+      </label>
+      <label class="timeout-setting-card">
+        <span class="timeout-setting-copy">
+          <strong>Route phone-presence checks through Tor</strong>
+          <small>Send the Snapchat/Amazon phone-presence checks through the local Tor sidecar instead of the deployment's normal egress IP, so a platform detecting and blocking that traffic can't also affect Corvus' other, legitimate collectors sharing the deployment's real IP. This is isolation, not anonymity or reliability — Tor exit IPs are commonly scrutinised as heavily as the traffic pattern itself, and enabling this does not make the underlying checks more likely to succeed.</small>
+          <span>{% if tor_configured %}Tor sidecar configured{% else %}No Tor proxy configured — this option has no effect until one is{% endif %}</span>
+        </span>
+        <span class="timeout-setting-input"><input type="checkbox" name="phone_presence_via_tor" {% if runtime_options.phone_presence_via_tor %}checked{% endif %}><span>enabled</span></span>
+      </label>
+    </div>
+    <div class="settings-actions">
+      <button class="primary" type="submit" name="action" value="save">Save runtime options</button>
+      <button class="button" type="submit" name="action" value="reset">Reset recommended defaults</button>
+    </div>
+  </form>
+</section>
+
+<section class="panel settings-panel">
+  <form action="/settings/steam-api-key" method="post" autocomplete="off">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="section-title">
+      <div><p class="eyebrow">STEAM</p><h2>Steam Web API</h2></div>
+      <span class="count-label">local credential</span>
+    </div>
+    <p class="field-help">Configure a Steam Web API key for the native Steam Public Profile collector. The key is stored locally, is never placed in case evidence or audit details, and the existing value is never displayed back into the browser.</p>
+    <div class="form-grid">
+      <label>Web API key
+        <input type="password" name="steam_api_key" value="" minlength="16" maxlength="128" spellcheck="false" autocomplete="new-password" placeholder="Paste a Steam Web API key">
+      </label>
+    </div>
+    <div class="settings-actions">
+      <button class="primary" type="submit" name="action" value="save">Save Steam API key</button>
+      <button class="button" type="submit" name="action" value="clear" formnovalidate>Clear configured key</button>
+      <small>Only public profile information is collected. Private profile/library settings remain authoritative.</small>
+    </div>
+  </form>
+</section>
+
+<section class="panel settings-panel">
+  <div class="section-title">
+    <div><p class="eyebrow">DATASET COVERAGE</p><h2>WhatsMyName</h2></div>
+    {% if wmn_summary %}<span class="count-label">{{ wmn_summary.site_count }} sites</span>{% endif %}
+  </div>
+  <p class="field-help">Refresh and inspect the independently versioned WhatsMyName dataset used for coverage analysis. This does not silently replace Blackbird's release-pinned runtime data.</p>
+  {% if wmn_summary %}
+  <dl class="definition-list">
+    <div><dt>Revision</dt><dd><code>{{ wmn_summary.revision[:12] }}</code></dd></div>
+    <div><dt>Retrieved</dt><dd>{{ wmn_summary.retrieved_at }}</dd></div>
+    <div><dt>Coverage</dt><dd>{{ wmn_summary.site_count }} sites across {{ wmn_summary.category_count }} categories</dd></div>
+    <div><dt>Protected</dt><dd>{{ wmn_summary.protected_site_count }} sites declare CAPTCHA, Cloudflare or other protections</dd></div>
+    <div><dt>Validation</dt><dd>{{ wmn_summary.schema_issue_count }} schema issue(s)</dd></div>
+    <div><dt>SHA-256</dt><dd><code>{{ wmn_summary.sha256 }}</code></dd></div>
+  </dl>
+  {% else %}
+  <p>No independently refreshed dataset is cached yet. The release-pinned dataset remains in use by Blackbird.</p>
+  {% endif %}
+  <form action="/settings/whatsmyname/refresh" method="post" class="settings-actions">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button class="primary" type="submit">Refresh coverage dataset</button>
+    <small>The downloaded JSON is schema-checked, size-bounded, hashed, stored with restrictive permissions and recorded in the audit log.</small>
+  </form>
+</section>
+
+<section class="panel settings-panel">
+  <form action="/settings/companies-house-api-key" method="post" autocomplete="off">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="section-title">
+      <div><p class="eyebrow">OFFICIAL COMPANY REGISTER</p><h2>UK Companies House API</h2></div>
+      <span class="badge {{ 'found' if companies_house_configured else 'unknown' }}">{{ 'configured' if companies_house_configured else 'disabled' }}</span>
+    </div>
+    <p class="field-help">Enables the manual Companies House collector for bounded public company and officer searches, including a small appointment sample for officer matches. The API key is stored locally and never echoed into evidence or logs.</p>
+    <label class="timeout-setting-card"><span class="timeout-setting-copy"><strong>Companies House API key</strong><small>HTTP Basic public-data API key from developer.company-information.service.gov.uk.</small></span><span class="timeout-setting-input"><input type="password" name="companies_house_api_key" autocomplete="new-password" minlength="12" maxlength="256"><span>secret</span></span></label>
+    <div class="settings-actions"><button class="primary" type="submit" name="action" value="save" title="Store the key locally and enable the manual UK company/officer collector for name cases">Save Companies House key</button><button class="button" type="submit" name="action" value="clear" formnovalidate>Clear key</button><small>When configured, the collector appears for compatible name investigations but remains unchecked by default.</small></div>
+  </form>
+</section>
+
+<section class="panel settings-panel">
+  <form action="/settings/abuseipdb-api-key" method="post" autocomplete="off">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="section-title"><div><p class="eyebrow">IP REPUTATION</p><h2>AbuseIPDB API</h2></div><span class="badge {{ 'found' if abuseipdb_configured else 'unknown' }}">{{ 'configured' if abuseipdb_configured else 'disabled' }}</span></div>
+    <p class="field-help">Adds a passive 90-day AbuseIPDB check to the explicit infrastructure enrichment card. Corvus does not submit abuse reports and does not request verbose reporter comments.</p>
+    <label class="timeout-setting-card"><span class="timeout-setting-copy"><strong>AbuseIPDB API key</strong><small>Used only with the API v2 CHECK endpoint.</small></span><span class="timeout-setting-input"><input type="password" name="abuseipdb_api_key" autocomplete="new-password" minlength="12" maxlength="256"><span>secret</span></span></label>
+    <div class="settings-actions"><button class="primary" type="submit" name="action" value="save" title="Store the key locally and add AbuseIPDB 90-day reputation to infrastructure enrichment">Save AbuseIPDB key</button><button class="button" type="submit" name="action" value="clear" formnovalidate>Clear key</button></div>
+  </form>
+</section>
+
+<section class="panel settings-panel">
+  <form action="/settings/openphish-feed" method="post" autocomplete="off">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="section-title"><div><p class="eyebrow">PHISHING INTELLIGENCE</p><h2>OpenPhish authorised feed</h2></div><span class="badge {{ 'found' if openphish_configured else 'unknown' }}">{{ 'configured' if openphish_configured else 'disabled' }}</span></div>
+    <p class="field-help">Enables passive domain correlation against an OpenPhish feed your organisation is authorised to use. Corvus deliberately does not default to the public Community feed because its terms restrict organisational operational use. Law-enforcement users can request Gov Feed access from OpenPhish.</p>
+    <label class="timeout-setting-card"><span class="timeout-setting-copy"><strong>Authorised OpenPhish feed URL</strong><small>HTTPS OpenPhish-hosted feed URL supplied under your organisation's licence/Gov access. The URL is treated as a local secret and is never written into case evidence or logs.</small></span><span class="timeout-setting-input"><input type="password" name="openphish_feed_url" autocomplete="new-password" maxlength="2048" placeholder="https://…openphish.com/…"><span>secret URL</span></span></label>
+    <div class="settings-actions"><button class="primary" type="submit" name="action" value="save" title="Store the authorised feed URL as a secret and enable OpenPhish correlation">Save OpenPhish feed</button><button class="button" type="submit" name="action" value="clear" formnovalidate title="Remove the stored feed URL and disable OpenPhish correlation">Clear feed</button><small>When configured, OpenPhish appears as a manual domain collector and matches locally cached feed data without visiting the suspected phishing URLs.</small></div>
+  </form>
+</section>
+
+<section class="panel settings-panel">
+  <form action="/settings/urlscan-api-key" method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="section-title">
+      <div><p class="eyebrow">HISTORICAL URL DISCOVERY</p><h2>URLScan API</h2></div>
+      <span class="badge {{ 'found' if urlscan_configured else 'unknown' }}">{{ 'configured' if urlscan_configured else 'disabled' }}</span>
+    </div>
+    <p class="field-help">URLScan is a specialist, manual-only domain collector. Corvus uses the historical Search API only; it never submits a new scan. The API key is not written to case evidence or execution logs.</p>
+    <label class="timeout-setting-card">
+      <span class="timeout-setting-copy"><strong>URLScan API key</strong><small>Used only for authenticated historical search requests.</small></span>
+      <span class="timeout-setting-input"><input type="password" name="urlscan_api_key" autocomplete="off" minlength="16" maxlength="256" aria-label="URLScan API key"><span>secret</span></span>
+    </label>
+    <div class="settings-actions">
+      <button class="primary" type="submit" name="action" value="save" title="Store the key locally and make the manual URLScan historical-search collector available for domain cases">Save URLScan key</button>
+      <button class="button" type="submit" name="action" value="clear" formnovalidate>Clear key</button>
+      <small>When configured, URLScan appears in compatible domain collectors but remains unchecked by default.</small>
+    </div>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,5 @@
+[+] github.com
+[x] twitter.com
+[!] example-error.test
+
+[+] Email used, [-] Email not used, [x] Rate limit, [!] Error

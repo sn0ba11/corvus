@@ -1,0 +1,9 @@
+bind = "0.0.0.0:28019"
+api = true
+
+[image_search]
+enabled = false
+
+[engines]
+# Keep the upstream defaults for the initial Corvus evaluation. Per-engine
+# quality is assessed and filtered by the Corvus adapter before evidence is kept.

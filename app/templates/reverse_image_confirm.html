@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Confirm reverse-image search · Corvus{% endblock %}
+{% block content %}
+<section class="page-shell narrow-shell">
+  <div class="panel">
+    <p class="eyebrow">EXTERNAL MEDIA EGRESS</p>
+    <h1>Confirm reverse-image search</h1>
+    <p>This action will disclose the selected profile-image URL to <strong>{{ target.label }}</strong>. Corvus will not send a locally retained image automatically.</p>
+    <dl class="definition-list">
+      <div><dt>Provider</dt><dd>{{ target.label }}</dd></div>
+      <div><dt>Finding</dt><dd>{{ finding.platform or 'Unknown platform' }} · {{ finding.value or finding.id }}</dd></div>
+    </dl>
+    <form method="post" action="/findings/{{ finding.id }}/reverse-image/{{ target.provider }}" class="details-form">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label class="inline-choice"><input type="checkbox" name="approved" required> I approve sending this image reference to {{ target.label }} for this search.</label>
+      <div class="case-actions">
+        <button type="submit" class="primary">Open {{ target.label }}</button>
+        <a class="button" href="/investigations/{{ finding.investigation_id }}">Cancel</a>
+      </div>
+    </form>
+    <p class="muted">The provider, destination, finding and retained image hash (when available) are recorded in the case audit trail.</p>
+  </div>
+</section>
+{% endblock %}

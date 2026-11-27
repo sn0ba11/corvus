@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en" class="mobile-site">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="htmx-config" content='{"includeIndicatorStyles": false}'>
+  <title>{% block title %}Corvus{% endblock %}</title>
+  <meta name="theme-color" content="#5e7458">
+  <link rel="icon" href="/static/corvus-mark.jpg?v=corvus-raster-2" type="image/jpeg">
+  <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="/static/results.css">
+  <link rel="stylesheet" href="/static/mobile.css" media="(max-width: 760px), (hover: none) and (pointer: coarse)">
+  <script defer src="/static/htmx.min.js"></script>
+  <script defer src="/static/app.js"></script>
+</head>
+<body class="mobile-site-body">
+  <header class="app-header">
+    <div class="header-shell">
+      <a href="/" class="brand" aria-label="Corvus home">
+        <img class="brand-mark" src="/static/corvus-mark.jpg?v=corvus-raster-2" alt="" width="85" height="85">
+        <span class="brand-copy"><strong>CORVUS</strong><small>OSINT Investigation Workbench</small></span>
+      </a>
+      <nav class="top-nav" aria-label="Primary navigation">
+        <a href="/" {% if request.url.path == '/' %}aria-current="page"{% endif %}>Dashboard</a>
+        <a href="/settings" {% if request.url.path.startswith('/settings') %}aria-current="page"{% endif %}>Settings</a>
+        <a href="/manual" target="_blank" rel="noopener">Manual</a>
+        {% if managed_browser_enabled %}
+        <a class="sock-login" href="{{ managed_browser_desktop_url }}" target="_blank" rel="noopener noreferrer" title="Open the isolated browser desktop and sign in to investigation accounts">Log in to sock browser</a>
+        {% endif %}
+        <button id="theme" type="button" aria-label="Toggle colour theme" title="Toggle colour theme">Theme</button>
+      </nav>
+    </div>
+  </header>
+  <main class="page-shell">{% block content %}{% endblock %}</main>
+  <footer>
+    <strong>Corvus {{ app_version or '' }}</strong>
+    <span>Use only for lawful, authorised searches of publicly accessible information. Results indicate possible associations, not identity.</span>
+    {% if app_build_commit %}<code>{{ app_build_commit[:8] }}</code>{% endif %}
+  </footer>
+</body>
+</html>

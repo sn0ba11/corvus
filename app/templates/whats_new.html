@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}What's new · Corvus{% endblock %}
+{% block content %}
+<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Dashboard</a><span>/</span><span>What's new</span></nav>
+<section class="panel settings-hero update-hero">
+  <div>
+    <p class="eyebrow">RELEASE HISTORY</p>
+    <h1>What's new</h1>
+    <p>Review the main user-visible improvements added since the original RC19 release.</p>
+  </div>
+  <div class="update-launcher-actions">
+    <a class="button" href="/">Back to dashboard</a>
+    <a class="button primary" href="/maintenance/update">Corvus Update</a>
+  </div>
+</section>
+{% include "_update_changelog.html" %}
+<section class="panel technical-update-record">
+  <h2>Full release history</h2>
+  <p class="muted">The summary above is filtered to the builds installed on this machine. The complete curated Corvus changelog is available separately.</p>
+  <a class="button" href="/maintenance/changelog">View full changelog</a>
+</section>
+{% endblock %}

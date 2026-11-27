@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{{ run.display_name }} execution log · Corvus{% endblock %}
+{% block content %}
+<section class="case-header compact">
+  <div class="case-heading">
+    <div><p class="eyebrow">TOOL EXECUTION</p><h1>{{ run.display_name }} log</h1><p>Retained stdout and stderr for this exact collector run.</p></div>
+    <div class="case-actions"><a class="button" href="/investigations/{{ investigation.id }}#runs">Back to investigation</a><a class="button" href="/investigations/{{ investigation.id }}/raw-json?run_id={{ run.id }}">Raw JSON</a>{% if log %}<a class="button primary" href="/investigations/{{ investigation.id }}/runs/{{ run.id }}/log?download=true">Download log</a>{% endif %}</div>
+  </div>
+</section>
+
+<section class="panel raw-json-viewer tool-log-viewer">
+  <div class="panel-heading raw-json-heading">
+    <div><p class="eyebrow">{{ run.tool_id|upper }}</p><h2>{{ run.status|replace('_', ' ')|title }}</h2><p>{{ run.timeout_seconds }}s timeout{% if run.duration_ms is not none %} · {{ (run.duration_ms / 1000)|round(1) }}s runtime{% endif %}{% if log %} · {{ log.size_bytes }} bytes{% endif %}</p></div>
+    {% if log %}<div class="json-toolbar"><button type="button" data-copy-json-target="tool-run-log">Copy log</button><button type="button" data-toggle-json-wrap-target="tool-run-log">Wrap lines</button></div>{% endif %}
+  </div>
+  {% if run.error_message %}<div class="callout danger"><strong>Recorded run error</strong><p>{{ run.error_message }}</p></div>{% endif %}
+  {% if error %}<div class="empty-state"><strong>No retained execution log</strong><p>{{ error }}</p><p>The run metadata above is still authoritative. Queued or interrupted legacy runs may not have produced a log file.</p></div>{% elif log %}
+  <div class="warning"><strong>Exact process output</strong><p>This is the collector's retained stdout and stderr. It may include upstream warnings, request failures, parser messages and diagnostic details omitted from the concise report.</p></div>
+  <div id="tool-run-log" class="raw-json-document"><pre class="json-code raw-json-code tool-log-code"><code>{{ log.content }}</code></pre></div>
+  {% endif %}
+</section>
+{% endblock %}

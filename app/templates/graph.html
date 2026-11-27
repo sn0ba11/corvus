@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Investigation graph · {{ investigation.title }}{% endblock %}
+{% block content %}
+<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Dashboard</a><span>/</span><a href="/investigations/{{ investigation.id }}">{{ investigation.title }}</a><span>/</span><span>Investigation graph</span></nav>
+
+<section class="case-header graph-case-header">
+  <div class="case-heading">
+    <div>
+      <p class="eyebrow">VISUAL INVESTIGATION</p>
+      <h1>Investigation graph</h1>
+      <div class="case-identity"><code>{{ investigation.query }}</code><span>{{ graph_summary.node_count }} nodes</span><span>{{ graph_summary.edge_count }} relationships</span>{% if graph_summary.saved_position_count %}<span>{{ graph_summary.saved_position_count }} saved positions</span>{% endif %}</div>
+    </div>
+    <div class="case-status"><a class="button graph-help" data-help="Return to the normal evidence register for this investigation." title="Return to the investigation evidence register" href="/investigations/{{ investigation.id }}">Back to investigation</a><a class="button graph-help" data-help="Open the printable analytical report in a separate tab." title="Open the printable analytical report" href="/investigations/{{ investigation.id }}/report" target="_blank" rel="noopener">Open report</a></div>
+  </div>
+</section>
+
+<section class="graph-toolbar panel" aria-label="Graph controls">
+  <div class="graph-toolbar-main">
+    <label class="graph-help" data-help="Type any username, platform, domain, source or evidence value. Non-matching entities are dimmed rather than removed." title="Search and visually highlight matching graph entities">Find an entity<input id="graph-search" type="search" placeholder="Username, platform, domain or source" autocomplete="off"></label>
+    <label class="graph-help" data-help="Choose how visible entities are arranged. Applying a layout changes presentation only; it does not alter evidence. Chronological timeline also switches Timeline events on." title="Choose a graph arrangement">Layout<select id="graph-layout"><option value="radial">Subject centred</option><option value="grouped">Group by type</option><option value="provenance">Provenance flow</option><option value="chronological">Chronological timeline</option></select></label>
+    <div class="graph-button-row"><button class="graph-help" data-help="Rearrange all currently visible entities using the selected layout." title="Apply the selected layout" id="graph-apply-layout" type="button">Apply layout</button><button class="graph-help" data-help="Zoom and pan automatically so every currently visible entity fits in the canvas." title="Fit all visible entities into the canvas" id="graph-fit" type="button">Fit graph</button><button class="graph-help" data-help="Temporarily show only the selected entity and its directly connected evidence. This does not delete or reject evidence." title="Show only the selected entity and its direct relationships" id="graph-one-hop" type="button" disabled>Include selected only</button><button class="graph-help" data-help="Hide the selected entity from this graph view. Its evidence remains in the investigation and can be restored." title="Exclude the selected entity from this graph view" id="graph-exclude-selected" type="button" disabled>Exclude selected</button><button class="graph-help" data-help="Leave include-only mode and return to the current filter-based view." title="Clear the include-only view" id="graph-show-all" type="button" disabled>Clear include-only</button><button class="graph-help" data-help="Restore every entity manually excluded during this graph session." title="Restore manually excluded entities" id="graph-restore-excluded" type="button" disabled>Restore excluded</button></div>
+  </div>
+  <div class="graph-filter-row" aria-label="Visibility filters">
+    <label class="inline-choice graph-help" data-help="Reveal low-confidence and single-source findings that are hidden from the concise overview." title="Reveal all retained findings"><input id="graph-show-all-findings" type="checkbox"> All findings</label>
+    <label class="inline-choice graph-help" data-help="Show proposed or weakly supported relationships that have not been accepted as identity links." title="Show candidate relationships"><input id="graph-show-candidates" type="checkbox"> Candidate relationships</label>
+    <label class="inline-choice graph-help" data-help="Show findings or relationships contradicted by validation, such as confirmed missing accounts." title="Show contradicted evidence"><input id="graph-show-contradicted" type="checkbox"> Contradicted findings</label>
+    <label class="inline-choice graph-help" data-help="Show collector nodes and the reported-by relationships that preserve tool provenance." title="Show collector provenance"><input id="graph-show-collectors" type="checkbox"> Collector provenance</label>
+    <label class="inline-choice graph-help" data-help="Show retained profile-image evidence and image-correlation relationships." title="Show retained image evidence"><input id="graph-show-images" type="checkbox"> Images</label>
+    <label class="inline-choice graph-help" data-help="Show declared, observed or derived location evidence. Location nodes remain evidence observations, not proof of residence." title="Show location evidence"><input id="graph-show-locations" type="checkbox" checked> Locations</label>
+    <label class="inline-choice graph-help" data-help="Show Internet Archive observations and archive relationships for public pages." title="Show archive observations"><input id="graph-show-archives" type="checkbox"> Archives</label>
+    <label class="inline-choice graph-help" data-help="Show parsed account creation, last-online and public-activity events. Event dates retain extractor and source-field provenance." title="Show parsed account timeline events"><input id="graph-show-events" type="checkbox"> Timeline events</label>
+  </div>
+  <div class="graph-export-row">
+    <div><span id="graph-visible-count">Loading graph…</span><span id="graph-save-state" class="muted" aria-live="polite"></span></div>
+    <div class="graph-button-row"><button class="graph-help" data-help="Persist the current node positions for this investigation. Visibility filters and temporary exclusions are not saved." title="Save current node positions" id="graph-save" type="button">Save layout</button><button class="graph-help" data-help="Delete saved positions and restore the default subject-centred arrangement." title="Reset saved node positions" id="graph-reset" type="button">Reset layout</button><button class="graph-help" data-help="Download a PNG of the current visible canvas. Profile photographs are omitted from the exported bitmap." title="Export the current graph view as PNG" id="graph-export-png" type="button">Export PNG</button><button class="graph-help" data-help="Download the complete graph evidence projection and current positions as portable JSON. This export is not limited by temporary visibility filters." title="Export complete graph evidence as JSON" id="graph-export-json" type="button">Export graph JSON</button></div>
+  </div>
+</section>
+
+<details class="panel graph-annotations"><summary><strong>Analyst graph annotations</strong> · {{ graph_summary.analyst_note_count or 0 }} notes · {{ graph_summary.manual_relationship_count or 0 }} manual relationships</summary><div class="grid two"><form action="/investigations/{{ investigation.id }}/graph/annotations/note" method="post" class="details-form"><input type="hidden" name="csrf" value="{{ csrf }}"><h3>Node note</h3><label>Entity<select name="node_id" required>{% for node in graph_annotation_nodes %}<option value="{{ node.id }}">{{ node.label }}</option>{% endfor %}</select></label><label>Analyst note<textarea name="note" maxlength="2000" rows="3"></textarea></label><button type="submit">Save node note</button></form><form action="/investigations/{{ investigation.id }}/graph/annotations/relationship" method="post" class="details-form"><input type="hidden" name="csrf" value="{{ csrf }}"><h3>Manual relationship</h3><label>Source<select name="source" required>{% for node in graph_annotation_nodes %}<option value="{{ node.id }}">{{ node.label }}</option>{% endfor %}</select></label><label>Target<select name="target" required>{% for node in graph_annotation_nodes %}<option value="{{ node.id }}">{{ node.label }}</option>{% endfor %}</select></label><label>Relationship label<input name="label" maxlength="120" placeholder="Known associate / same organisation / reviewed link" required></label><label>Analyst note<textarea name="note" maxlength="1000" rows="2"></textarea></label><button type="submit">Add relationship</button></form></div>{% if graph_annotations.relationships %}<div class="pivot-list">{% for rel in graph_annotations.relationships %}<div class="pivot-item"><div><strong>{{ rel.label }}</strong><small>{{ rel.source }} → {{ rel.target }}{% if rel.note %} · {{ rel.note }}{% endif %}</small></div><form action="/investigations/{{ investigation.id }}/graph/annotations/relationship/{{ rel.id }}/delete" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">Remove</button></form></div>{% endfor %}</div>{% endif %}<small>Annotations are analyst-created interpretation. They are audited and stored separately from source findings.</small></details>
+
+<section class="graph-workspace" data-investigation-id="{{ investigation.id }}">
+  <div class="graph-canvas-panel">
+    <div id="graph-loading" class="graph-loading" role="status">Building the evidence graph…</div>
+    <svg id="investigation-graph" role="img" aria-label="Interactive graph of investigation entities and evidence relationships" tabindex="0">
+      <defs>
+        <marker id="graph-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z"></path></marker>
+        <marker id="graph-arrow-candidate" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z"></path></marker>
+        <clipPath id="graph-avatar-clip"><circle cx="0" cy="0" r="22"></circle></clipPath>
+      </defs>
+      <g id="graph-viewport"><g id="graph-edges"></g><g id="graph-edge-labels"></g><g id="graph-nodes"></g></g>
+    </svg>
+    <div class="graph-legend" aria-label="Graph legend">
+      <span><i class="legend-node subject"></i> Subject</span><span><i class="legend-node profile"></i> Account</span><span><i class="legend-node identifier"></i> Identifier</span><span><i class="legend-node evidence"></i> Evidence</span><span><i class="legend-line observed"></i> Source-backed</span><span><i class="legend-line candidate"></i> Candidate</span><span><i class="legend-line rejected"></i> Rejected</span>
+    </div>
+  </div>
+  <aside id="graph-inspector" class="graph-inspector panel" aria-live="polite">
+    <p class="eyebrow">PROVENANCE</p>
+    <h2>Select a node or relationship</h2>
+    <p>Click an entity or edge to inspect the source, confidence, observation time and available pivots. Dashed relationships remain candidates until supported or accepted.</p>
+  </aside>
+</section>
+
+<noscript><section class="panel"><h2>JavaScript is required</h2><p>The investigation graph is an interactive local visualisation. The normal evidence register and reports remain available without it.</p></section></noscript>
+<script id="graph-config" type="application/json">{{ {"data_url": "/investigations/" ~ investigation.id ~ "/graph/data", "layout_url": "/investigations/" ~ investigation.id ~ "/graph/layout", "csrf": csrf, "filename": "investigation-" ~ investigation.id ~ "-graph"}|tojson }}</script>
+<script defer src="/static/graph.js"></script>
+{% endblock %}

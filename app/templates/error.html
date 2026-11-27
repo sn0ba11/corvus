@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Request error · Corvus{% endblock %}
+{% block content %}
+<section class="panel error-page">
+  <p class="eyebrow">REQUEST NOT COMPLETED</p>
+  <h1>{{ status_code }}</h1>
+  <p>{{ message }}</p>
+  <p class="muted">Use the browser Back button to correct the submission, or return to the dashboard.</p>
+  <a class="button primary" href="/">Open dashboard</a>
+</section>
+{% endblock %}

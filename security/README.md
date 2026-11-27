@@ -1,0 +1,9 @@
+# Container security exceptions
+
+Corvus scans source and container images with Trivy. Container scans retain secrets and high and critical vulnerability findings. The release gate accepts only the specific high-severity Debian package versions and images listed in [the exception policy](debian-exceptions.json). A vendor fix, package version change, new image, critical rating, or expiry makes a matching finding block the gate again. The entries expire on 27 December 2026 UTC and require a fresh review before renewal.
+
+The Debian exceptions cover unused OpenSSL QUIC, ncurses terminfo tooling, systemd-homed, privileged filesystem and namespace operations, and Perl Archive::Tar input. Corvus uses SQLite for ordinary tables and does not use the SQLite session extension. Uploaded SQLite archives must expose ordinary tables and are opened read-only. See each entry for its scope and rationale. These exceptions apply to the published Compose configuration and its unprivileged services. Custom images, mounts, privileges or service changes require their own review.
+
+The browser image removes the GStreamer packages affected by [CVE-2025-3887](https://ubuntu.com/security/CVE-2025-3887). The collector image removes Git, Git’s distro libcurl and distro Expat after acquisition. Corvus’s own XML readers use parser-level DTD and entity rejection. Upstream or bundled libraries can have advisory coverage outside the system-package inventory.
+
+Use [Debian’s Security Tracker](https://security-tracker.debian.org/tracker/) to review fixed versions. To run the same gate locally, scan each built image with Trivy using `--scanners vuln,secret --severity HIGH,CRITICAL --format json`, then pass the image name and JSON report to `python scripts/check_container_scan.py IMAGE REPORT`. The script reports accepted and blocking matches separately.

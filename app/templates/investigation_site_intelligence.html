@@ -1,0 +1,31 @@
+{% if site_intelligence_view.enabled %}
+<section id="site-intelligence" class="section-block">
+  <div class="section-title">
+    <div><p class="eyebrow">CURRENT PUBLIC SITE</p><h2>Live Site Intelligence</h2><p class="section-description">{{ site_intelligence_view.methodology }}</p></div>
+    <span class="badge">{{ site_intelligence_view.total }} observations</span>
+  </div>
+  <div class="metric-grid case-metrics">
+    <article class="metric-card"><span>Emails</span><strong>{{ site_intelligence_view.counts.get('email', 0) }}</strong><small>Public page observations</small></article>
+    <article class="metric-card"><span>Documents</span><strong>{{ site_intelligence_view.counts.get('document_url', 0) }}</strong><small>Links only; files not downloaded</small></article>
+    <article class="metric-card"><span>JS endpoints</span><strong>{{ site_intelligence_view.counts.get('javascript_endpoint', 0) }}</strong><small>Static strings found in same-domain JavaScript</small></article>
+    <article class="metric-card"><span>Tracking IDs</span><strong>{{ site_intelligence_view.counts.get('tracking_identifier', 0) }}</strong><small>Useful correlation leads, not ownership proof</small></article>
+  </div>
+
+  {% if site_intelligence_view.groups.tracking_identifier %}
+  <article class="panel pivot-workbench"><div class="panel-heading"><div><p class="eyebrow">CROSS-SITE CORRELATION LEADS</p><h3>Tracking identifiers</h3></div></div><div class="pivot-list">
+    {% for item in site_intelligence_view.groups.tracking_identifier %}<div class="pivot-item"><div><strong>{{ item.value }}</strong><small>{{ item.tracking_type|replace('_', ' ') }}{% if item.source_url %} · observed at <a href="{{ item.source_url }}" target="_blank" rel="noopener noreferrer">source page</a>{% endif %}</small></div></div>{% endfor %}
+  </div></article>
+  {% endif %}
+
+  <details class="panel advanced-workbench">
+    <summary><span><strong>Extracted site structure</strong><small>Social links, external domains, technology hints, documents and JavaScript endpoints</small></span><span class="badge">Review</span></summary>
+    <div class="advanced-workbench-body">
+      {% for label, kind in [('Social links','linked_social_profile'),('External domains','external_domain'),('Technology hints','technology_hint'),('Documents','document_url'),('JavaScript endpoints','javascript_endpoint'),('Emails','email')] %}
+      {% if site_intelligence_view.groups.get(kind) %}<div class="panel-heading"><div><h3>{{ label }}</h3></div><span class="badge">{{ site_intelligence_view.counts.get(kind, 0) }}</span></div><div class="pivot-list">
+        {% for item in site_intelligence_view.groups.get(kind, []) %}<div class="pivot-item"><div><strong>{% if item.url %}<a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.value }}</a>{% else %}{{ item.value }}{% endif %}</strong><small>{% if item.hint_type %}{{ item.hint_type|replace('_', ' ') }} · {% endif %}{% if item.script_url %}script <code>{{ item.script_url }}</code> · {% endif %}{% if item.source_url %}source <code>{{ item.source_url }}</code>{% endif %}</small></div></div>{% endfor %}
+      </div>{% endif %}
+      {% endfor %}
+    </div>
+  </details>
+</section>
+{% endif %}

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Google dork search · {{ investigation.title }}{% endblock %}
+{% block content %}
+<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Dashboard</a><span>/</span><a href="/investigations/{{ investigation.id }}">{{ investigation.title }}</a><span>/</span><span>Google dork search</span></nav>
+
+<section class="case-header compact-header">
+  <div class="case-heading">
+    <div><p class="eyebrow">GOOGLE DORK SEARCH</p><h1>Copyable Google search links</h1><p class="section-description">Curated public-web searches for <code>{{ investigation.query }}</code>. Copy the literal query or the complete Google URL, or open it directly in a new tab.</p></div>
+    <div class="actions"><a class="button" href="/investigations/{{ investigation.id }}/search-queries" title="Open the full search and dork builder with engines, date ranges, document types and saved templates">Advanced search workbench</a><a class="button" href="/investigations/{{ investigation.id }}">Back to investigation</a></div>
+  </div>
+</section>
+
+<section class="content-grid dork-summary-grid">
+  <article class="panel">
+    <div class="panel-heading"><div><p class="eyebrow">CURRENT OPERATOR SET</p><h2>Built for what Google still supports</h2></div><span class="badge">{{ dorks|length }} searches</span></div>
+    <p>The main pack favours exact phrases, <code>site:</code>, exclusions and <code>filetype:</code>. Those remain part of Google's current documented search behaviour. Corvus does not generate obsolete <code>cache:</code> or <code>related:</code> searches.</p>
+    <p class="muted">Google's index is incomplete and results vary by time, account, location and ranking experiments. A missing result is not proof that the information does not exist.</p>
+  </article>
+  <aside class="panel">
+    <p class="eyebrow">RELIABILITY</p><h2>Operator confidence</h2>
+    <dl class="definition-list"><div><dt>Documented</dt><dd>{{ documented_count }} queries use Google's currently documented core syntax.</dd></div><div><dt>Best effort</dt><dd>{{ best_effort_count }} queries use useful title/URL-style constraints that Google does not currently guarantee in its public help.</dd></div></dl>
+    <p class="muted">Best-effort queries are separated so an operator change cannot silently make the whole pack look authoritative.</p>
+  </aside>
+</section>
+
+{% if dork_run_supported %}
+<section class="panel" id="automated-run"{% if dork_run and dork_run.status == 'running' %} data-auto-reload="15"{% endif %}>
+  <div class="panel-heading"><div><p class="eyebrow">AUTOMATED RUN</p><h2>Run social-platform dorks through the sock browser</h2><p class="section-description">Runs a short, paced set of grouped social-platform searches across several engines and imports only results that pass the normal relevance check. An engine that shows a challenge is dropped for the rest of the run; challenges are never solved automatically.</p></div>{% if dork_run %}<span class="badge {{ dork_run.status }}">{{ dork_run.status }}</span>{% endif %}</div>
+  {% if not managed_browser_enabled %}
+  <p class="warning-text">Managed browser support is disabled, so the automated run is unavailable.</p>
+  {% elif dork_run and dork_run.status == 'running' %}
+  <p>{{ dork_run.counts.get('completed', 0) }} of {{ dork_run.counts.total }} searches finished · {{ dork_run.counts.imported }} results imported. This page refreshes while the run is active.</p>
+  <form action="/investigations/{{ investigation.id }}/dork-run/cancel" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit" class="secondary" title="Stop after the search currently in the browser. Results already imported are kept">Cancel run</button></form>
+  {% else %}
+  <form action="/investigations/{{ investigation.id }}/dork-run" method="post" class="dork-run-form">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <fieldset><legend>Engines</legend>
+      {% for engine in dork_run_engines %}<label class="inline-choice" title="{% if engine == 'google' %}Google is the engine most likely to challenge automated searches{% elif engine == 'startpage' %}Startpage serves results from Google's index, but in testing it showed a browser check that did not clear{% elif engine == 'bing' %}In testing Bing ignored site and file-type restrictions and returned the same links for different searches. It only receives searches with no site or file-type restriction{% else %}{{ engine|title }} honoured grouped site searches in testing{% endif %}"><input type="checkbox" name="engines" value="{{ engine }}"{% if engine in dork_run_default_engines %} checked{% endif %}> {{ engine|title }}</label>{% endfor %}
+    </fieldset>
+    <div class="grid two">
+      <label title="How many searches to send in total, grouped social platforms first">Maximum searches<input type="number" name="max_queries" min="1" max="{{ dork_run_defaults.max_queries_limit }}" value="{{ dork_run_defaults.max_queries }}" required></label>
+      <label title="Shortest wait between two searches, in seconds">Minimum pause (seconds)<input type="number" name="delay_min" min="{{ dork_run_defaults.delay_low }}" max="{{ dork_run_defaults.delay_high }}" value="{{ dork_run_defaults.delay_min }}" required></label>
+      <label title="Longest wait between two searches, in seconds. Each pause is picked at random between the two values">Maximum pause (seconds)<input type="number" name="delay_max" min="{{ dork_run_defaults.delay_low }}" max="{{ dork_run_defaults.delay_high }}" value="{{ dork_run_defaults.delay_max }}" required></label>
+    </div>
+    <button type="submit" class="primary" title="Start the paced run in the background. Each search briefly uses the sock browser's single capture slot">Start automated run</button>
+    {% if dork_run_seeds|length > 1 %}<small>Searches cover every username, full name, email address and phone number in this case: {% for value in dork_run_seeds %}<code>{{ value }}</code>{% if not loop.last %}, {% endif %}{% endfor %}.</small>{% endif %}
+    <small>The run uses the active sock-browser identity and engine. The browser handles one capture at a time, so a manual capture started while a search is in flight is refused; try it again a few seconds later.</small>
+  </form>
+  {% endif %}
+  {% if dork_run %}
+  {% if dork_run.detail %}<p class="muted">{{ dork_run.detail|capitalize }}.</p>{% endif %}
+  <div class="table-scroll"><table><thead><tr><th>Search</th><th>Engine</th><th>Status</th><th>Read / imported</th></tr></thead><tbody>
+    {% for item in dork_run['items'] %}<tr><td data-label="Search"><strong>{{ item.label }}</strong><br><code>{{ item.query }}</code>{% if item.detail %}<small>{{ item.detail }}</small>{% endif %}</td><td data-label="Engine">{{ item.engine|title }}</td><td data-label="Status"><span class="badge {{ item.status }}">{{ item.status|replace('_', ' ') }}</span></td><td data-label="Read / imported">{{ item.extracted or 0 }} / {{ item.imported }}{% if item.browser_run_id %} · <a href="/investigations/{{ investigation.id }}/browser#capture-{{ item.browser_run_id }}">capture</a>{% endif %}</td></tr>{% endfor %}
+  </tbody></table></div>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="section-block">
+  <div class="section-title"><div><p class="eyebrow">DORK PACK</p><h2>Manual investigation searches</h2><p class="section-description">Opening or copying a link does not create a finding. Treat search results as leads until the underlying source is reviewed and retained.</p></div></div>
+  {% for category, group in dorks|groupby('category') %}
+  <section class="panel query-category dork-category">
+    <div class="panel-heading"><h3>{{ category }}</h3><span class="count-label">{{ group|length }}</span></div>
+    <div class="query-list">
+      {% for item in group %}
+      <article class="query-card dork-card">
+        <div class="query-card-heading"><div><strong>{{ item.label }}</strong><span class="source">Google</span></div><span class="badge {% if item.reliability == 'best_effort' %}likely{% endif %}" title="{% if item.reliability == 'best_effort' %}Uses title/URL-style operators that Google does not currently guarantee{% else %}Uses Google's currently documented core search syntax{% endif %}">{{ 'Best effort' if item.reliability == 'best_effort' else 'Documented' }}</span></div>
+        <div class="dork-copy"><code>{{ item.query }}</code><small>{{ item.note }}</small></div>
+        <div class="dork-actions">
+          <a class="button primary" href="{{ item.url }}" target="_blank" rel="noopener noreferrer" title="Open this exact query on Google in a new tab of your own browser. Nothing is added to the case">Open Google</a>
+          <button type="button" data-copy-value="{{ item.query }}" title="Copy the literal dork text to the clipboard">Copy query</button>
+          <button type="button" data-copy-value="{{ item.url }}" title="Copy the complete Google search URL to the clipboard">Copy link</button>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% else %}
+  <div class="empty-state"><strong>No dorks generated</strong><p>This investigation type does not currently have a Google dork pack.</p></div>
+  {% endfor %}
+</section>
+{% endblock %}

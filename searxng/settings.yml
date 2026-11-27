@@ -1,0 +1,67 @@
+use_default_settings:
+  engines:
+    keep_only:
+      - bing
+      - brave
+      - duckduckgo
+      - google
+      - mojeek
+      - qwant
+      - startpage
+
+general:
+  debug: false
+  instance_name: "Corvus Search"
+  donation_url: false
+  contact_url: false
+  enable_metrics: false
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  default_lang: en
+  formats:
+    - json
+
+server:
+  secret_key: "overridden-by-SEARXNG_SECRET"
+  limiter: false
+  image_proxy: false
+  bind_address: "0.0.0.0"
+  port: 8080
+
+ui:
+  static_use_hash: true
+
+outgoing:
+  request_timeout: 8.0
+  max_request_timeout: 12.0
+  pool_connections: 30
+  pool_maxsize: 15
+  enable_http2: true
+
+engines:
+  - name: bing
+    engine: bing_corvus
+    disabled: false
+    inactive: false
+  - name: brave
+    disabled: false
+    inactive: false
+  - name: duckduckgo
+    disabled: false
+    inactive: false
+  - name: google
+    disabled: false
+    inactive: false
+  - name: mojeek
+    disabled: false
+    inactive: false
+  - name: qwant
+    disabled: false
+    inactive: false
+  - name: startpage
+    disabled: false
+    inactive: false
+
+plugins: {}

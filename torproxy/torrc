@@ -1,0 +1,13 @@
+# Minimal Corvus Tor SOCKS proxy configuration.
+#
+# This is a plain Tor client (no hidden service, no relay/exit function). It
+# exists to give one specific, opt-in, higher-risk collector (the Instagram/
+# Amazon phone-presence checks) an outbound path that is isolated from the
+# deployment's own egress IP, so a platform detecting and blocking that
+# traffic pattern cannot also degrade Corvus' other, legitimate collectors
+# that share the deployment's real network egress.
+SocksPort 0.0.0.0:9050
+DataDirectory /var/lib/tor
+RunAsDaemon 0
+Log notice stdout
+AvoidDiskWrites 1

@@ -1,0 +1,33 @@
+FROM golang:1.27.4-bookworm@sha256:ce59b41415e2524ae99926fe1f37ce48ba8c194dcbd2a56a65436cdcefa2bd34 AS builder
+
+ENV GOTOOLCHAIN=local GOTELEMETRY=off
+
+ARG UPSTREAM_REPO=https://github.com/projectdiscovery/subfinder.git
+ARG UPSTREAM_COMMIT=0ed1b0b622fd94ac96877af3a7082117fca60772
+RUN git clone --filter=blob:none "${UPSTREAM_REPO}" /src/subfinder \
+ && git -C /src/subfinder checkout --detach "${UPSTREAM_COMMIT}" \
+ && cd /src/subfinder \
+ && go get github.com/klauspost/compress@v1.18.7 golang.org/x/crypto@v0.58.0 golang.org/x/net@v0.62.0 golang.org/x/text@v0.43.0 \
+ && go mod verify \
+ && CGO_ENABLED=0 go build -mod=readonly -trimpath -ldflags="-s -w" -o /out/subfinder ./cmd/subfinder
+
+FROM python:3.12.13-slim-trixie@sha256:229a2c5bfa27522db7815ea81f9bed70af17ccb9de9fc7ad142b1877b5830d36
+
+ARG TOOL_ID=subfinder
+ARG UPSTREAM_COMMIT=0ed1b0b622fd94ac96877af3a7082117fca60772
+ENV TOOL_ID=${TOOL_ID} UPSTREAM_COMMIT=${UPSTREAM_COMMIT} PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+RUN apt-get update \
+ && apt-get upgrade -y --no-install-recommends \
+ && apt-get install -y --no-install-recommends ca-certificates \
+ && rm -rf /var/lib/apt/lists/* \
+ && groupadd --gid 10001 tool \
+ && useradd --uid 10001 --gid tool --home-dir /tmp/tool-home --create-home tool \
+ && mkdir -p /output /tmp/tool-home/.config/subfinder \
+ && chown -R tool:tool /output /tmp/tool-home
+COPY --from=builder /out/subfinder /usr/local/bin/subfinder
+COPY --chown=tool:tool tool_containers/session_bridge.py /session_bridge.py
+COPY --chown=tool:tool tool_containers/runner.py /runner.py
+USER 10001:10001
+EXPOSE 8080
+HEALTHCHECK --interval=20s --timeout=3s --start-period=10s --retries=3 CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=2)"]
+ENTRYPOINT ["python", "/runner.py"]
